@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 import brazilianLogo from './assets/Brasilian-Hair-Seduction-logo-brand-page-e1658557973418.jpg'
@@ -27,6 +27,12 @@ const tiktokUrl = 'https://www.tiktok.com/@salonsusanariquelme'
 const whatsappHref = (message: string) =>
   `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
 
+const normalizeSearchText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase('es')
+
 const brandLogos = [
   { name: 'TRUSS Professional', image: trussLogo },
   { name: 'L\'Oreal Professionnel', image: lorealLogo },
@@ -43,6 +49,27 @@ const footerSocialLinks = [
     name: 'WhatsApp',
     url: whatsappHref('Hola Susana Riquelme Peluqueria, quiero hacer una consulta.'),
     icon: 'whatsapp',
+  },
+]
+
+const team = [
+  {
+    name: 'Maria Jose',
+    role: 'CEO y estilista',
+    initials: 'MJ',
+    description: 'Descripción por poner.',
+  },
+  {
+    name: 'Moira',
+    role: 'Estilista',
+    initials: 'M',
+    description: 'Descripción por poner.',
+  },
+  {
+    name: 'Claudia',
+    role: 'Estilista',
+    initials: 'C',
+    description: 'Descripción por poner.',
   },
 ]
 
@@ -140,38 +167,114 @@ const products = [
   {
     brand: 'Glatten Professional',
     title: 'Me Cacheia Definidor Intenso 500ml',
-    price: 'Consultar precio',
+    price: '$18.990',
     image: productDefinidor,
+    category: 'Definicion',
+    description:
+      'Crema de peinar de fijacion flexible para definir ondas y rizos, controlar el volumen y mantener el movimiento natural.',
+    benefits: ['Definicion duradera', 'Control de frizz', 'Sin efecto rigido'],
+    size: '500 ml',
   },
   {
     brand: 'Glatten Professional',
     title: 'Serum Luminous Repair 60ml',
-    price: 'Consultar precio',
+    price: '$16.990',
     image: productSerum,
+    category: 'Reparacion',
+    description:
+      'Serum de acabado ligero que ayuda a sellar las puntas, aportar brillo y proteger el cabello del aspecto reseco.',
+    benefits: ['Brillo inmediato', 'Puntas suaves', 'Textura ligera'],
+    size: '60 ml',
   },
   {
     brand: 'Glatten Professional',
     title: 'Fluido Acidificante Capilar',
-    price: 'Consultar precio',
+    price: '$21.990',
     image: productAcidificante,
+    category: 'Tratamiento',
+    description:
+      'Tratamiento acidificante pensado para cabellos porosos o procesados que necesitan recuperar suavidad y apariencia uniforme.',
+    benefits: ['Ayuda a sellar la cuticula', 'Mejora la suavidad', 'Ideal post color'],
+    size: '250 ml',
   },
   {
     brand: 'La Bella Liss',
     title: 'Kit Zero Frizz shampoo + acondicionador',
-    price: 'Consultar precio',
+    price: '$24.990',
     image: productZeroFrizz,
+    category: 'Control de frizz',
+    description:
+      'Rutina de limpieza y acondicionamiento para disciplinar el cabello y prolongar una terminacion suave y ordenada.',
+    benefits: ['Limpieza suave', 'Mayor manejabilidad', 'Rutina completa'],
+    size: 'Kit 2 productos',
   },
   {
     brand: 'Brazilian Hair Seduction',
     title: 'Plastica de Cacau profesional',
-    price: 'Consultar precio',
+    price: '$29.990',
     image: productCacau,
+    category: 'Nutricion',
+    description:
+      'Mascarilla de nutricion intensa con cacao para cabellos que buscan cuerpo, brillo y una sensacion profundamente acondicionada.',
+    benefits: ['Nutricion intensa', 'Cabello mas brillante', 'Suavidad profunda'],
+    size: '1 kg',
   },
   {
     brand: 'Glatten Professional',
     title: 'Kit Summer proteccion termoactiva',
-    price: 'Consultar precio',
+    price: '$27.990',
     image: productSummer,
+    category: 'Proteccion',
+    description:
+      'Kit de cuidado diario para proteger el cabello frente al calor, la exposicion ambiental y la perdida de hidratacion.',
+    benefits: ['Proteccion termica', 'Cuidado diario', 'Ayuda a mantener el brillo'],
+    size: 'Kit 3 productos',
+  },
+]
+
+const productBrands = ['Todos', ...new Set(products.map((product) => product.brand))]
+const productCategories = ['Todas', ...new Set(products.map((product) => product.category))]
+const productsPerPage = 9
+
+const alliances = [
+  {
+    name: 'Josse Calabriano',
+    handle: '@jossecalabriano',
+    url: 'https://www.instagram.com/jossecalabriano/',
+    initials: 'JC',
+    label: 'Alianza local',
+  },
+  {
+    name: 'Bettina Joyas',
+    handle: '@bettina_joyas',
+    url: 'https://www.instagram.com/bettina_joyas/',
+    initials: 'BJ',
+    label: 'Alianza local',
+    image: accessoriesDetail,
+  },
+]
+
+const newsItems = [
+  {
+    category: 'Novedades',
+    date: 'Fecha por definir',
+    title: 'Título por poner',
+    description: 'Descripción por poner.',
+    image: salonReception,
+  },
+  {
+    category: 'Noticias del salón',
+    date: 'Fecha por definir',
+    title: 'Título por poner',
+    description: 'Descripción por poner.',
+    image: salonChairs,
+  },
+  {
+    category: 'Comunidad',
+    date: 'Fecha por definir',
+    title: 'Título por poner',
+    description: 'Descripción por poner.',
+    image: accessoriesDetail,
   },
 ]
 
@@ -254,6 +357,12 @@ function SocialIcon({ icon }: { icon: string }) {
 function App() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<(typeof products)[number] | null>(null)
+  const [productQuery, setProductQuery] = useState('')
+  const [selectedProductBrand, setSelectedProductBrand] = useState('Todos')
+  const [selectedProductCategory, setSelectedProductCategory] = useState('Todas')
+  const [productSort, setProductSort] = useState('featured')
+  const [productPage, setProductPage] = useState(1)
   const [clientName, setClientName] = useState('')
   const [selectedService, setSelectedService] = useState(serviceOptions[0])
   const [clientMessage, setClientMessage] = useState('')
@@ -269,6 +378,87 @@ function App() {
     return lines.join('\n')
   }, [clientMessage, clientName, selectedService])
 
+  const filteredProducts = useMemo(() => {
+    const query = normalizeSearchText(productQuery.trim())
+
+    const matches = products.filter((product) => {
+      const matchesBrand =
+        selectedProductBrand === 'Todos' || product.brand === selectedProductBrand
+      const matchesCategory =
+        selectedProductCategory === 'Todas' ||
+        product.category === selectedProductCategory
+      const searchableText = [
+        product.title,
+        product.brand,
+        product.category,
+        product.description,
+        ...product.benefits,
+      ].join(' ')
+      const normalizedSearchableText = normalizeSearchText(searchableText)
+
+      return (
+        matchesBrand &&
+        matchesCategory &&
+        (!query || normalizedSearchableText.includes(query))
+      )
+    })
+
+    return [...matches].sort((firstProduct, secondProduct) => {
+      if (productSort === 'price-asc') {
+        return Number(firstProduct.price.replace(/\D/g, '')) -
+          Number(secondProduct.price.replace(/\D/g, ''))
+      }
+
+      if (productSort === 'price-desc') {
+        return Number(secondProduct.price.replace(/\D/g, '')) -
+          Number(firstProduct.price.replace(/\D/g, ''))
+      }
+
+      if (productSort === 'name') {
+        return firstProduct.title.localeCompare(secondProduct.title, 'es')
+      }
+
+      return 0
+    })
+  }, [productQuery, productSort, selectedProductBrand, selectedProductCategory])
+
+  const totalProductPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / productsPerPage),
+  )
+  const visibleProducts = filteredProducts.slice(
+    (productPage - 1) * productsPerPage,
+    productPage * productsPerPage,
+  )
+  const firstVisibleProduct = filteredProducts.length
+    ? (productPage - 1) * productsPerPage + 1
+    : 0
+  const lastVisibleProduct = Math.min(
+    productPage * productsPerPage,
+    filteredProducts.length,
+  )
+  const hasActiveProductFilters =
+    productQuery.trim() !== '' ||
+    selectedProductBrand !== 'Todos' ||
+    selectedProductCategory !== 'Todas'
+
+  const resetProductFilters = () => {
+    setProductQuery('')
+    setSelectedProductBrand('Todos')
+    setSelectedProductCategory('Todas')
+    setProductSort('featured')
+    setProductPage(1)
+  }
+
+  const changeProductPage = (page: number) => {
+    setProductPage(page)
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById('product-results')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
   const openBooking = (service?: string) => {
     if (service) {
       setSelectedService(service)
@@ -277,6 +467,24 @@ function App() {
     setIsBookingOpen(true)
     setIsMenuOpen(false)
   }
+
+  useEffect(() => {
+    const isModalOpen = isBookingOpen || selectedProduct !== null
+    document.body.style.overflow = isModalOpen ? 'hidden' : ''
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsBookingOpen(false)
+        setSelectedProduct(null)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isBookingOpen, selectedProduct])
 
   return (
     <div className="app-shell">
@@ -307,10 +515,11 @@ function App() {
         </button>
 
         <nav className="site-nav" aria-label="Navegacion principal">
-          <a href="#salon" onClick={() => setIsMenuOpen(false)}>Salon</a>
+          <a href="#nosotras" onClick={() => setIsMenuOpen(false)}>Nosotras</a>
           <a href="#servicios" onClick={() => setIsMenuOpen(false)}>Servicios</a>
           <a href="#productos" onClick={() => setIsMenuOpen(false)}>Productos</a>
-          <a href="#redes" onClick={() => setIsMenuOpen(false)}>Redes</a>
+          <a href="#alianzas" onClick={() => setIsMenuOpen(false)}>Alianzas</a>
+          <a href="#novedades" onClick={() => setIsMenuOpen(false)}>Novedades</a>
           <a href="#ubicacion" onClick={() => setIsMenuOpen(false)}>Ubicacion</a>
         </nav>
 
@@ -397,6 +606,46 @@ function App() {
           ))}
         </section>
 
+        <section className="team-section" id="nosotras">
+          <div className="section-heading team-heading">
+            <div>
+              <p className="section-kicker">Nosotras</p>
+              <h2>Tres miradas, una misma forma de cuidar tu cabello.</h2>
+            </div>
+            <p>Descripción general por poner.</p>
+          </div>
+
+          <div className="team-grid">
+            {team.map((member, index) => (
+              <article className="team-card" key={member.name}>
+                <div className="team-portrait" aria-hidden="true">
+                  <span>{member.initials}</span>
+                  <small>0{index + 1}</small>
+                </div>
+                <div className="team-card-body">
+                  <div>
+                    <p>{member.role}</p>
+                    <h3>{member.name}</h3>
+                  </div>
+                  <p>{member.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="history-section" id="historia">
+          <div className="history-media">
+            <img src={salonWide} alt="Interior de Susana Riquelme Peluqueria" />
+            <div className="history-seal" aria-hidden="true">SR</div>
+          </div>
+          <div className="history-copy">
+            <p className="section-kicker">Nuestra historia</p>
+            <h2>La historia de Susana Riquelme.</h2>
+            <p>Descripción por poner.</p>
+          </div>
+        </section>
+
         <section className="services-section" id="servicios">
           <div className="services-layout">
             <div className="services-intro">
@@ -443,46 +692,238 @@ function App() {
         </section>
 
         <section className="products-section" id="productos">
-          <div className="section-heading compact">
-            <p className="section-kicker">Productos</p>
-            <h2>Tienda de productos profesionales para mantener tu resultado.</h2>
-            <p>
-              La compra se coordina por WhatsApp para confirmar disponibilidad,
-              precio vigente y recomendacion segun tu cabello.
-            </p>
+          <div className="products-showcase">
+            <div className="products-heading">
+              <div>
+                <p className="section-kicker">Tienda profesional</p>
+                <h2>El cuidado del salon, tambien en casa.</h2>
+              </div>
+              <div className="products-heading-copy">
+                <span>Selección Susana Riquelme</span>
+                <p>
+                  Encuentra productos por nombre, marca o necesidad y revisa
+                  cada detalle antes de coordinar tu compra por WhatsApp.
+                </p>
+                <small>Precios referenciales.</small>
+              </div>
+            </div>
+
+            <div className="product-discovery">
+              <label className="product-search">
+                <span className="sr-only">Buscar productos</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10.8" cy="10.8" r="6.6" />
+                  <path d="m16 16 4.2 4.2" />
+                </svg>
+                <input
+                  type="search"
+                  value={productQuery}
+                  onChange={(event) => {
+                    setProductQuery(event.target.value)
+                    setProductPage(1)
+                  }}
+                  placeholder="Buscar por producto, marca o necesidad"
+                />
+                {productQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductQuery('')
+                      setProductPage(1)
+                    }}
+                    aria-label="Limpiar busqueda"
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </label>
+
+              <div className="product-filter-row">
+                <div className="product-filters" role="group" aria-label="Filtrar productos por marca">
+                  {productBrands.map((brand) => {
+                    const productCount =
+                      brand === 'Todos'
+                        ? products.length
+                        : products.filter((product) => product.brand === brand).length
+
+                    return (
+                      <button
+                        className={selectedProductBrand === brand ? 'is-active' : ''}
+                        type="button"
+                        aria-pressed={selectedProductBrand === brand}
+                        onClick={() => {
+                          setSelectedProductBrand(brand)
+                          setProductPage(1)
+                        }}
+                        key={brand}
+                      >
+                        {brand}
+                        <span>{productCount}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="product-catalog-toolbar">
+                <div className="product-selects">
+                  <label>
+                    <span>Categoría</span>
+                    <select
+                      value={selectedProductCategory}
+                      onChange={(event) => {
+                        setSelectedProductCategory(event.target.value)
+                        setProductPage(1)
+                      }}
+                    >
+                      {productCategories.map((category) => (
+                        <option key={category}>{category}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Ordenar por</span>
+                    <select
+                      value={productSort}
+                      onChange={(event) => {
+                        setProductSort(event.target.value)
+                        setProductPage(1)
+                      }}
+                    >
+                      <option value="featured">Destacados</option>
+                      <option value="name">Nombre A-Z</option>
+                      <option value="price-asc">Menor precio</option>
+                      <option value="price-desc">Mayor precio</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="product-catalog-summary">
+                  <p className="product-results-count" aria-live="polite">
+                    Mostrando {firstVisibleProduct}-{lastVisibleProduct} de{' '}
+                    {filteredProducts.length}
+                  </p>
+                  {hasActiveProductFilters ? (
+                    <button type="button" onClick={resetProductFilters}>
+                      Limpiar filtros
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="products-grid">
-            {products.map((product) => (
+          <div className="products-grid" id="product-results">
+            {visibleProducts.map((product) => (
               <article className="product-card" key={product.title}>
                 <div className="product-image-wrap">
+                  <span className="product-category">{product.category}</span>
                   <img src={product.image} alt={product.title} />
                 </div>
                 <div className="product-body">
                   <p>{product.brand}</p>
                   <h3>{product.title}</h3>
+                  <span className="product-size">{product.size}</span>
                   <div className="product-footer">
                     <strong>{product.price}</strong>
-                    <a
+                    <button
                       className="buy-link"
-                      href={whatsappHref(
-                        `Hola Susana Riquelme Peluqueria, quiero consultar por el producto: ${product.title}.`,
-                      )}
-                      target="_blank"
+                      type="button"
+                      onClick={() => setSelectedProduct(product)}
                     >
-                      Comprar
-                    </a>
+                      Ver producto
+                    </button>
                   </div>
                 </div>
               </article>
             ))}
           </div>
+
+          {filteredProducts.length === 0 ? (
+            <div className="products-empty" role="status">
+              <span aria-hidden="true">SR</span>
+              <h3>No encontramos productos con esos filtros.</h3>
+              <p>Prueba otra palabra o vuelve a ver el catálogo completo.</p>
+              <button type="button" onClick={resetProductFilters}>
+                Limpiar filtros
+              </button>
+            </div>
+          ) : null}
+
+          {filteredProducts.length > productsPerPage ? (
+            <nav className="product-pagination" aria-label="Páginas de productos">
+              <button
+                type="button"
+                disabled={productPage === 1}
+                onClick={() => changeProductPage(productPage - 1)}
+              >
+                Anterior
+              </button>
+              <div>
+                {Array.from({ length: totalProductPages }, (_, index) => index + 1).map(
+                  (page) => (
+                    <button
+                      className={productPage === page ? 'is-active' : ''}
+                      type="button"
+                      aria-current={productPage === page ? 'page' : undefined}
+                      onClick={() => changeProductPage(page)}
+                      key={page}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={productPage === totalProductPages}
+                onClick={() => changeProductPage(productPage + 1)}
+              >
+                Siguiente
+              </button>
+            </nav>
+          ) : null}
         </section>
 
         <section className="gallery-section" aria-label="Galeria del salon">
           {gallery.map((image) => (
             <img key={image.src} src={image.src} alt={image.alt} />
           ))}
+        </section>
+
+        <section className="alliances-section" id="alianzas">
+          <div className="section-heading alliances-heading">
+            <div>
+              <p className="section-kicker">Nuestras alianzas</p>
+              <h2>Proyectos locales que complementan tu experiencia.</h2>
+            </div>
+            <p>Descripción por poner.</p>
+          </div>
+
+          <div className="alliances-grid">
+            {alliances.map((alliance) => (
+              <a
+                className="alliance-card"
+                href={alliance.url}
+                target="_blank"
+                rel="noreferrer"
+                key={alliance.name}
+              >
+                <div className="alliance-visual">
+                  {alliance.image ? (
+                    <img src={alliance.image} alt="" />
+                  ) : (
+                    <span>{alliance.initials}</span>
+                  )}
+                </div>
+                <div className="alliance-body">
+                  <p>{alliance.label}</p>
+                  <h3>{alliance.name}</h3>
+                  <span>{alliance.handle}</span>
+                  <strong>Visitar Instagram <span aria-hidden="true">↗</span></strong>
+                </div>
+              </a>
+            ))}
+          </div>
         </section>
 
         <section className="social-section" id="redes">
@@ -506,6 +947,36 @@ function App() {
                   loading="lazy"
                   referrerPolicy="strict-origin-when-cross-origin"
                 />
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="news-section" id="novedades">
+          <div className="news-heading">
+            <div>
+              <p className="section-kicker">Novedades</p>
+              <h2>Noticias y momentos del salón.</h2>
+            </div>
+            <p>
+              Este espacio reunirá anuncios, actividades y novedades publicadas
+              por el equipo de Susana Riquelme.
+            </p>
+          </div>
+
+          <div className="news-grid">
+            {newsItems.map((item, index) => (
+              <article className={`news-card ${index === 0 ? 'is-featured' : ''}`} key={`${item.title}-${index}`}>
+                <div className="news-image">
+                  <img src={item.image} alt="" />
+                  <span>{item.category}</span>
+                </div>
+                <div className="news-body">
+                  <time>{item.date}</time>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                  <span className="news-pending">Contenido por publicar</span>
+                </div>
               </article>
             ))}
           </div>
@@ -575,7 +1046,13 @@ function App() {
       </footer>
 
       {isBookingOpen ? (
-        <div className="modal-backdrop" role="presentation">
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsBookingOpen(false)
+          }}
+        >
           <section
             className="booking-modal"
             role="dialog"
@@ -631,6 +1108,75 @@ function App() {
             >
               Cotizar por WhatsApp
             </a>
+          </section>
+        </div>
+      ) : null}
+
+      {selectedProduct ? (
+        <div
+          className="modal-backdrop product-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelectedProduct(null)
+          }}
+        >
+          <section
+            className="product-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-modal-title"
+          >
+            <button
+              className="modal-close product-modal-close"
+              type="button"
+              onClick={() => setSelectedProduct(null)}
+              aria-label="Cerrar detalle de producto"
+            >
+              ×
+            </button>
+
+            <div className="product-modal-gallery">
+              <div className="product-modal-main-image">
+                <img src={selectedProduct.image} alt={selectedProduct.title} />
+              </div>
+              <button className="product-thumbnail is-active" type="button" aria-label="Vista principal">
+                <img src={selectedProduct.image} alt="" />
+              </button>
+            </div>
+
+            <div className="product-modal-info">
+              <p className="product-modal-brand">{selectedProduct.brand}</p>
+              <h2 id="product-modal-title">{selectedProduct.title}</h2>
+              <p className="product-modal-category">
+                {selectedProduct.category} · {selectedProduct.size}
+              </p>
+              <strong className="product-modal-price">{selectedProduct.price}</strong>
+              <p className="product-modal-description">{selectedProduct.description}</p>
+
+              <div className="product-benefits">
+                <p>Por que te encantara</p>
+                <ul>
+                  {selectedProduct.benefits.map((benefit) => (
+                    <li key={benefit}>{benefit}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <a
+                className="button product-buy-button"
+                href={whatsappHref(
+                  `Hola Susana Riquelme Peluqueria, quiero comprar ${selectedProduct.title} (${selectedProduct.price}).`,
+                )}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Comprar por WhatsApp
+              </a>
+              <small>
+                Precio referencial. Confirmaremos stock y valor final antes de
+                coordinar la compra.
+              </small>
+            </div>
           </section>
         </div>
       ) : null}
