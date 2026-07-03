@@ -1,0 +1,450 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function validProduct() {
+      return request.resource.data.keys().hasAll([
+          'brand', 'title', 'price', 'image', 'category', 'description',
+          'benefits', 'size', 'order', 'active'
+        ])
+        && request.resource.data.brand is string
+        && request.resource.data.brand.size() <= 100
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 180
+        && request.resource.data.price is string
+        && request.resource.data.price.size() <= 30
+        && request.resource.data.image is string
+        && request.resource.data.image.size() <= 2000
+        && request.resource.data.category is string
+        && request.resource.data.category.size() <= 100
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.benefits is list
+        && request.resource.data.benefits.size() <= 10
+        && request.resource.data.size is string
+        && request.resource.data.size.size() <= 80
+        && request.resource.data.order is number
+        && request.resource.data.active is bool;
+    }
+
+    function validNews() {
+      return request.resource.data.keys().hasAll([
+          'category', 'date', 'title', 'description', 'link', 'image',
+          'order', 'active'
+        ])
+        && request.resource.data.category is string
+        && request.resource.data.category.size() <= 100
+        && request.resource.data.date is string
+        && request.resource.data.date.size() <= 20
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 180
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 3000
+        && request.resource.data.link is string
+        && request.resource.data.link.size() <= 2000
+        && request.resource.data.image is string
+        && request.resource.data.image.size() <= 2000
+        && request.resource.data.order is number
+        && request.resource.data.active is bool;
+    }
+
+    function validServiceCategory() {
+      return request.resource.data.keys().hasAll([
+          'kicker', 'title', 'note', 'accent', 'disclaimer', 'order', 'active'
+        ])
+        && request.resource.data.kicker is string
+        && request.resource.data.kicker.size() <= 80
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 180
+        && request.resource.data.accent is string
+        && request.resource.data.accent.size() <= 80
+        && request.resource.data.disclaimer is string
+        && request.resource.data.disclaimer.size() <= 600
+        && request.resource.data.order is number
+        && request.resource.data.active is bool;
+    }
+
+    function validServiceItem() {
+      return request.resource.data.keys().hasAll([
+          'categoryId', 'name', 'price', 'order', 'active'
+        ])
+        && request.resource.data.categoryId is string
+        && request.resource.data.categoryId.size() <= 200
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 140
+        && request.resource.data.price is string
+        && request.resource.data.price.size() <= 60
+        && request.resource.data.order is number
+        && request.resource.data.active is bool;
+    }
+
+    function validServiceSettings() {
+      return request.resource.data.keys().hasAll(['servicesInitialized'])
+        && request.resource.data.servicesInitialized is bool;
+    }
+
+    function validClient() {
+      return request.resource.data.keys().hasAll([
+          'firstName', 'paternalSurname', 'maternalSurname', 'phone',
+          'birthday', 'commune', 'email', 'instagram', 'vip', 'notes',
+          'active', 'searchText'
+        ])
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() <= 100
+        && request.resource.data.paternalSurname is string
+        && request.resource.data.paternalSurname.size() <= 100
+        && request.resource.data.maternalSurname is string
+        && request.resource.data.maternalSurname.size() <= 100
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.birthday is string
+        && request.resource.data.birthday.size() <= 60
+        && request.resource.data.commune is string
+        && request.resource.data.commune.size() <= 100
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 160
+        && request.resource.data.instagram is string
+        && request.resource.data.instagram.size() <= 100
+        && request.resource.data.vip is bool
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 3000
+        && request.resource.data.active is bool
+        && request.resource.data.searchText is string
+        && request.resource.data.searchText.size() <= 600;
+    }
+
+    function validVisit(clientId) {
+      return request.resource.data.keys().hasAll([
+          'clientId', 'date', 'service', 'colorFormula', 'stylist',
+          'notes', 'amount'
+        ])
+        && request.resource.data.clientId == clientId
+        && request.resource.data.date is string
+        && request.resource.data.date.size() <= 100
+        && request.resource.data['service'] is string
+        && request.resource.data['service'].size() <= 300
+        && request.resource.data.colorFormula is string
+        && request.resource.data.colorFormula.size() <= 2000
+        && request.resource.data.stylist is string
+        && request.resource.data.stylist.size() <= 100
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 2000
+        && request.resource.data.amount is string
+        && request.resource.data.amount.size() <= 100;
+    }
+
+    function validAppointment() {
+      return request.resource.data.keys().hasAll([
+          'date', 'depositDate', 'depositAmount', 'survey', 'stylist',
+          'clientName', 'service', 'serviceCash', 'serviceCard',
+          'serviceTransfer', 'serviceReceipt', 'productStylist',
+          'productClientName', 'productName', 'productCash', 'productCard',
+          'productTransfer', 'productReceipt', 'notes', 'sourceSheet',
+          'sourceRow', 'sourceId'
+        ])
+        && request.resource.data.date is string
+        && request.resource.data.date.size() <= 20
+        && request.resource.data.depositDate is string
+        && request.resource.data.depositDate.size() <= 80
+        && request.resource.data.depositAmount is number
+        && request.resource.data.depositAmount >= 0
+        && request.resource.data.survey is string
+        && request.resource.data.survey.size() <= 120
+        && request.resource.data.stylist is string
+        && request.resource.data.stylist.size() <= 100
+        && request.resource.data.clientName is string
+        && request.resource.data.clientName.size() <= 160
+        && request.resource.data['service'] is string
+        && request.resource.data['service'].size() <= 300
+        && request.resource.data.serviceCash is number
+        && request.resource.data.serviceCash >= 0
+        && request.resource.data.serviceCard is number
+        && request.resource.data.serviceCard >= 0
+        && request.resource.data.serviceTransfer is number
+        && request.resource.data.serviceTransfer >= 0
+        && request.resource.data.serviceReceipt is string
+        && request.resource.data.serviceReceipt.size() <= 80
+        && request.resource.data.productStylist is string
+        && request.resource.data.productStylist.size() <= 100
+        && request.resource.data.productClientName is string
+        && request.resource.data.productClientName.size() <= 160
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() <= 300
+        && request.resource.data.productCash is number
+        && request.resource.data.productCash >= 0
+        && request.resource.data.productCard is number
+        && request.resource.data.productCard >= 0
+        && request.resource.data.productTransfer is number
+        && request.resource.data.productTransfer >= 0
+        && request.resource.data.productReceipt is string
+        && request.resource.data.productReceipt.size() <= 80
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 2000
+        && request.resource.data.sourceSheet is string
+        && request.resource.data.sourceSheet.size() <= 100
+        && request.resource.data.sourceRow is number
+        && request.resource.data.sourceRow >= 0
+        && request.resource.data.sourceId is string
+        && request.resource.data.sourceId.size() <= 200;
+    }
+
+    function validInventory(productId) {
+      return request.resource.data.keys().hasAll([
+          'productId', 'sku', 'stock', 'minimumStock', 'costPrice',
+          'supplier', 'location'
+        ])
+        && request.resource.data.productId == productId
+        && request.resource.data.sku is string
+        && request.resource.data.sku.size() <= 100
+        && request.resource.data.stock is number
+        && request.resource.data.stock >= 0
+        && request.resource.data.minimumStock is number
+        && request.resource.data.minimumStock >= 0
+        && request.resource.data.costPrice is number
+        && request.resource.data.costPrice >= 0
+        && request.resource.data.supplier is string
+        && request.resource.data.supplier.size() <= 200
+        && request.resource.data.location is string
+        && request.resource.data.location.size() <= 200;
+    }
+
+    function validInventoryInvoice() {
+      return request.resource.data.keys().hasAll([
+          'invoiceNumber', 'supplier', 'invoiceDate', 'paymentMethod',
+          'image', 'notes', 'netTotal', 'taxTotal', 'grossTotal', 'lineCount'
+        ])
+        && request.resource.data.invoiceNumber is string
+        && request.resource.data.invoiceNumber.size() <= 80
+        && request.resource.data.supplier is string
+        && request.resource.data.supplier.size() <= 200
+        && request.resource.data.invoiceDate is string
+        && request.resource.data.invoiceDate.size() <= 20
+        && request.resource.data.paymentMethod is string
+        && request.resource.data.paymentMethod.size() <= 80
+        && request.resource.data.image is string
+        && request.resource.data.image.size() <= 2000
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000
+        && request.resource.data.netTotal is number
+        && request.resource.data.netTotal >= 0
+        && request.resource.data.taxTotal is number
+        && request.resource.data.taxTotal >= 0
+        && request.resource.data.grossTotal is number
+        && request.resource.data.grossTotal >= 0
+        && request.resource.data.lineCount is number
+        && request.resource.data.lineCount > 0;
+    }
+
+    function validInventoryInvoiceLine() {
+      return request.resource.data.keys().hasAll([
+          'invoiceId', 'invoiceNumber', 'invoiceDate', 'supplier',
+          'productId', 'productName', 'sku', 'quantity', 'remainingQuantity',
+          'netUnitValue', 'discountTotal', 'grossUnitValue', 'grossTotalValue'
+        ])
+        && request.resource.data.invoiceId is string
+        && request.resource.data.invoiceId.size() <= 200
+        && request.resource.data.invoiceNumber is string
+        && request.resource.data.invoiceNumber.size() <= 80
+        && request.resource.data.invoiceDate is string
+        && request.resource.data.invoiceDate.size() <= 20
+        && request.resource.data.supplier is string
+        && request.resource.data.supplier.size() <= 200
+        && request.resource.data.productId is string
+        && request.resource.data.productId.size() <= 200
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() <= 180
+        && request.resource.data.sku is string
+        && request.resource.data.sku.size() <= 100
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.remainingQuantity is number
+        && request.resource.data.remainingQuantity >= 0
+        && request.resource.data.remainingQuantity <= request.resource.data.quantity
+        && request.resource.data.netUnitValue is number
+        && request.resource.data.netUnitValue >= 0
+        && request.resource.data.discountTotal is number
+        && request.resource.data.discountTotal >= 0
+        && request.resource.data.grossUnitValue is number
+        && request.resource.data.grossUnitValue >= 0
+        && request.resource.data.grossTotalValue is number
+        && request.resource.data.grossTotalValue >= 0;
+    }
+
+    function validInventorySupplier() {
+      return request.resource.data.keys().hasAll([
+          'name', 'rut', 'contactName', 'phone', 'email', 'address',
+          'notes', 'active', 'searchText'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.rut is string
+        && request.resource.data.rut.size() <= 40
+        && request.resource.data.contactName is string
+        && request.resource.data.contactName.size() <= 120
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 160
+        && request.resource.data.address is string
+        && request.resource.data.address.size() <= 200
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000
+        && request.resource.data.active is bool
+        && request.resource.data.searchText is string
+        && request.resource.data.searchText.size() <= 700;
+    }
+
+    function validStylist() {
+      return request.resource.data.keys().hasAll([
+          'name', 'role', 'phone', 'email', 'paymentFrequency',
+          'active', 'notes', 'searchText'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.role is string
+        && request.resource.data.role.size() <= 100
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 160
+        && request.resource.data.paymentFrequency in ['weekly', 'monthly']
+        && request.resource.data.active is bool
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000
+        && request.resource.data.searchText is string
+        && request.resource.data.searchText.size() <= 600;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validProduct();
+      allow delete: if isAdmin();
+    }
+
+    match /news/{newsId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validNews();
+      allow delete: if isAdmin();
+    }
+
+    match /serviceCategories/{categoryId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validServiceCategory();
+      allow delete: if isAdmin();
+    }
+
+    match /serviceItems/{itemId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validServiceItem();
+      allow delete: if isAdmin();
+    }
+
+    match /siteSettings/{settingId} {
+      allow read: if settingId == 'services';
+      allow create, update: if isAdmin()
+        && settingId == 'services'
+        && validServiceSettings();
+      allow delete: if false;
+    }
+
+    match /clients/{clientId} {
+      allow read, delete: if isAdmin();
+      allow create, update: if isAdmin() && validClient();
+
+      match /visits/{visitId} {
+        allow read, delete: if isAdmin();
+        allow create, update: if isAdmin() && validVisit(clientId);
+      }
+    }
+
+    match /{path=**}/visits/{visitId} {
+      allow read: if isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read, delete: if isAdmin();
+      allow create, update: if isAdmin() && validAppointment();
+    }
+
+    match /stylists/{stylistId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validStylist();
+      allow delete: if false;
+    }
+
+    match /systemSeeds/{seedId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /inventory/{productId} {
+      allow read, delete: if isAdmin();
+      allow create, update: if isAdmin() && validInventory(productId);
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /inventoryInvoices/{invoiceId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validInventoryInvoice();
+      allow delete: if false;
+    }
+
+    match /inventoryInvoiceLines/{lineId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validInventoryInvoiceLine();
+      allow delete: if false;
+    }
+
+    match /inventorySuppliers/{supplierId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validInventorySupplier();
+      allow delete: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /analyticsEvents/{eventId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly([
+          'name', 'sessionId', 'path', 'section', 'itemId', 'itemName', 'createdAt'
+        ])
+        && request.resource.data.name in [
+          'page_view', 'section_view', 'product_view', 'product_whatsapp',
+          'booking_open', 'news_open'
+        ]
+        && request.resource.data.sessionId is string
+        && request.resource.data.sessionId.size() <= 100
+        && request.resource.data.path is string
+        && request.resource.data.path.size() <= 500
+        && (!('section' in request.resource.data)
+          || (request.resource.data.section is string
+            && request.resource.data.section.size() <= 100))
+        && (!('itemId' in request.resource.data)
+          || (request.resource.data.itemId is string
+            && request.resource.data.itemId.size() <= 200))
+        && (!('itemName' in request.resource.data)
+          || (request.resource.data.itemName is string
+            && request.resource.data.itemName.size() <= 200))
+        && request.resource.data.createdAt is timestamp;
+      allow update, delete: if false;
+    }
+
+    match /admins/{userId} {
+      allow read, write: if false;
+    }
+  }
+}

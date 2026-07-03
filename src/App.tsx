@@ -1,23 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import AdminPanel from './AdminPanel'
+import {
+  subscribeToNews,
+  subscribeToProducts,
+  subscribeToServiceCategories,
+  subscribeToServiceItems,
+  trackSiteEvent,
+} from './firebase'
+import type { NewsItem, Product, ServiceCategory, ServiceItem } from './types'
+import ContentImage from './ContentImage'
 
-import brazilianLogo from './assets/Brasilian-Hair-Seduction-logo-brand-page-e1658557973418.jpg'
-import productDefinidor from './assets/IMG_6099.WEBP'
-import productSerum from './assets/IMG_6100.WEBP'
-import productAcidificante from './assets/IMG_6101.WEBP'
-import productZeroFrizz from './assets/IMG_6102.WEBP'
-import productCacau from './assets/IMG_6103.WEBP'
-import productSummer from './assets/IMG_6104.PNG'
+import brazilianLogo from './assets/eef019e6-2c79-4ceb-ae07-f48716d5bb3f.png'
+import glattenLogo from './assets/glatten-professional-logo.png'
 import inebryaLogo from './assets/inebrya_white.svg'
-import lorealLogo from './assets/logo-loreal-02.webp'
-import salonHero from './assets/web-IMG_6062.jpg'
-import salonReception from './assets/web-IMG_6061.jpg'
-import salonChairs from './assets/web-IMG_6074.jpg'
-import salonWide from './assets/web-IMG_6065.jpg'
-import accessoriesDetail from './assets/web-IMG_6073.jpg'
+import lorealLogo from './assets/images.png'
+import salonHero from './assets/web-IMG_6610.jpg'
+import salonFacade from './assets/web-IMG_6619.jpg'
+import salonReception from './assets/web-IMG_6608.jpg'
+import salonJewelry from './assets/web-IMG_6612.jpg'
+import salonJewelryDetail from './assets/web-IMG_6613.jpg'
+import salonStations from './assets/web-IMG_6614.jpg'
+import salonLogoDetail from './assets/web-IMG_6615.jpg'
 import srLogoBlack from './assets/SRLOGOSINFONDO.png'
 import srLogoWhite from './assets/SR BLANCA SINFONDO.png'
 import trussLogo from './assets/TRUSS-Professional-Branco-opt.webp'
+import mariaJosePhoto from './assets/MARIAJOSE.jpeg'
+import moiraPhoto from './assets/MOIRA.jpeg'
+import claudiaPhoto from './assets/CLAUDIA.jpeg'
 
 const whatsappNumber = '56986327850'
 const instagramUrl = 'https://www.instagram.com/susanariquelmepeluqueria/'
@@ -33,12 +43,24 @@ const normalizeSearchText = (value: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLocaleLowerCase('es')
 
+const formatNewsDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  return new Intl.DateTimeFormat('es-CL', { dateStyle: 'long' }).format(
+    new Date(`${value}T12:00:00`),
+  )
+}
+
+const hasVisibleProductPrice = (price: string) => {
+  const normalizedPrice = price.trim().toLocaleLowerCase('es')
+  return normalizedPrice !== '' && normalizedPrice !== 'consultar'
+}
+
 const brandLogos = [
   { name: 'TRUSS Professional', image: trussLogo },
-  { name: 'L\'Oreal Professionnel', image: lorealLogo },
+  { name: 'L\'Oreal Paris', image: lorealLogo },
   { name: 'Inebrya', image: inebryaLogo },
-  { name: 'Brazilian Hair Seduction', image: brazilianLogo },
-  { name: 'Glatten', image: null },
+  { name: 'Brasilian Hair Seduction', image: brazilianLogo },
+  { name: 'Glatten Professional', image: glattenLogo },
 ]
 
 const footerSocialLinks = [
@@ -47,253 +69,192 @@ const footerSocialLinks = [
   { name: 'TikTok', url: tiktokUrl, icon: 'tiktok' },
   {
     name: 'WhatsApp',
-    url: whatsappHref('Hola Susana Riquelme Peluqueria, quiero hacer una consulta.'),
+    url: whatsappHref('Hola Susana Riquelme Peluquería, quiero hacer una consulta.'),
     icon: 'whatsapp',
   },
 ]
 
 const team = [
   {
-    name: 'Maria Jose',
-    role: 'CEO y estilista',
+    name: 'María José Abarzúa',
+    role: 'Directora y Estilista Senior',
     initials: 'MJ',
-    description: 'Descripción por poner.',
+    image: mariaJosePhoto,
+    description:
+      'María José cree que cada cabello tiene necesidades únicas. Por eso, su trabajo se basa en la asesoría personalizada, el cuidado capilar y la creación de resultados que reflejen la esencia de cada clienta en un ambiente de confianza y bienestar.',
+    specialties: [
+      'Diagnóstico capilar',
+      'Rubios personalizados',
+      'Morenas iluminadas',
+      'Reparación capilar',
+      'Experta en rizos',
+      'Asesoría de productos profesionales',
+    ],
   },
   {
     name: 'Moira',
-    role: 'Estilista',
+    role: 'Colorista y Especialista en Corrección de Color',
     initials: 'M',
-    description: 'Descripción por poner.',
+    image: moiraPhoto,
+    description:
+      'Moira se caracteriza por su responsabilidad, dedicación y atención al detalle. Disfruta especialmente los desafíos técnicos, transformando cabellos complejos en resultados armónicos y saludables. Su enfoque perfeccionista y su compromiso con cada trabajo le permiten abordar correcciones de color y rubios personalizados con precisión y confianza.',
+    specialties: [
+      'Corrección de color',
+      'Rubios personalizados',
+      'Diseño de mechas',
+      'Transformaciones capilares',
+      'Neutralización de tonos no deseados',
+      'Diagnóstico capilar',
+      'Reparación capilar',
+      'Alisados',
+    ],
   },
   {
     name: 'Claudia',
-    role: 'Estilista',
+    role: 'Colorista y Estilista Integral',
     initials: 'C',
-    description: 'Descripción por poner.',
-  },
-]
-
-const serviceGroups = [
-  {
-    kicker: 'Corte',
-    title: 'Corte de cabello',
-    note: 'Incluye lavado y brushing.',
-    accent: 'Precision',
-    items: [
-      { name: 'Corte', price: '$29.990' },
-      { name: 'Corte + peinado', price: '$39.990' },
-    ],
-  },
-  {
-    kicker: 'Eventos',
-    title: 'Peinados',
-    note: 'Incluye lavado y brushing.',
-    accent: 'Look final',
-    items: [
-      { name: 'Ondas', price: '$14.990' },
-      { name: 'Peinado de fiesta', price: 'Desde $35.990' },
-      { name: 'Peinado de novia', price: 'Desde $65.990' },
-    ],
-  },
-  {
-    kicker: 'Salud capilar',
-    title: 'Tratamientos capilares',
-    note: 'Incluye lavado y brushing.',
-    accent: 'Diagnostico',
-    items: [
-      { name: 'Tratamiento Inebrya', price: '$30.990' },
-      { name: 'Tratamiento K18', price: '$38.990' },
-      { name: 'Tratamiento Truss', price: '$38.990' },
-      { name: 'Botox Capilar S/M', price: '$40.990' },
-      { name: 'Botox Capilar L/XL', price: '$45.990' },
-    ],
-  },
-  {
-    kicker: 'Disciplina',
-    title: 'Alisado',
-    note: 'Incluye fluido antihumedad.',
-    accent: 'Anti frizz',
-    items: [
-      { name: 'Corto', price: '$60.000' },
-      { name: 'Medio', price: '$80.000' },
-      { name: 'Largo', price: '$95.000' },
-      { name: 'Extra largo', price: '$110.000' },
-    ],
-  },
-  {
-    kicker: 'Colorimetria',
-    title: 'Color',
-    note: 'Incluye lavado nutritivo y brushing.',
-    accent: 'Personalizado',
-    items: [
-      { name: 'Cintillo', price: '$25.990' },
-      { name: 'Retoque crecimiento', price: '$40.990' },
-      { name: 'Color global S', price: '$53.990' },
-      { name: 'Color global M', price: '$59.990' },
-      { name: 'Color global L', price: '$69.990' },
-      { name: 'Color global XL', price: '$79.990' },
-      { name: 'Falso crecimiento', price: '$25.990 / $38.990' },
-    ],
-    disclaimer:
-      'Si tu retoque tiene mas de 1 mes de crecimiento, se aplica un cargo adicional de $10.000 por cada mes extra.',
-  },
-  {
-    kicker: 'Mechas',
-    title: 'Iluminacion y mechas',
-    note: 'Incluye tratamiento profesional y peinado.',
-    accent: 'Brillo',
-    items: [
-      { name: 'Mechas creativas', price: 'Desde $130.990' },
-      { name: 'Mechas con superaclarante', price: 'Desde $100.990' },
-    ],
-  },
-  {
-    kicker: 'Rizadas',
-    title: 'Cabello rizado',
-    note: 'Incluye lavado nutritivo.',
-    accent: 'Definicion',
-    items: [
-      { name: 'Servicio rizadas S/M', price: '$25.990' },
-      { name: 'Servicio rizadas L/XL', price: '$39.990' },
+    image: claudiaPhoto,
+    description:
+      'Con más de 10 años de experiencia, Claudia se caracteriza por su cercanía, energía positiva y dedicación hacia cada clienta. Su objetivo es crear resultados personalizados en un ambiente de confianza, haciendo que cada visita sea una experiencia agradable y acogedora.',
+    specialties: [
+      'Tonos cobrizos',
+      'Rubios personalizados',
+      'Morena iluminada',
+      'Diseño de mechas',
+      'Visos',
+      'Coloración personalizada',
     ],
   },
 ]
 
-const serviceOptions = serviceGroups.flatMap((group) =>
-  group.items.map((item) => `${group.title} - ${item.name} (${item.price})`),
-)
-
-const products = [
+const historyHighlights = [
   {
-    brand: 'Glatten Professional',
-    title: 'Me Cacheia Definidor Intenso 500ml',
-    price: '$18.990',
-    image: productDefinidor,
-    category: 'Definicion',
-    description:
-      'Crema de peinar de fijacion flexible para definir ondas y rizos, controlar el volumen y mantener el movimiento natural.',
-    benefits: ['Definicion duradera', 'Control de frizz', 'Sin efecto rigido'],
-    size: '500 ml',
+    label: 'Origen',
+    title: 'Una historia que nació desde la pasión por la belleza',
+    text:
+      'Susana Riquelme nació en 2019 en Penco, comenzando como un pequeño espacio llamado Cute Nails. Un lugar simple, pero con una visión clara: crear una experiencia de belleza cercana, profesional y con sentido.',
   },
   {
-    brand: 'Glatten Professional',
-    title: 'Serum Luminous Repair 60ml',
-    price: '$16.990',
-    image: productSerum,
-    category: 'Reparacion',
-    description:
-      'Serum de acabado ligero que ayuda a sellar las puntas, aportar brillo y proteger el cabello del aspecto reseco.',
-    benefits: ['Brillo inmediato', 'Puntas suaves', 'Textura ligera'],
-    size: '60 ml',
+    label: 'Evolución',
+    title: 'Crecimiento con propósito',
+    text:
+      'Con el tiempo, el proyecto creció y evolucionó hacia Concepción, pasando por distintas etapas, espacios y aprendizajes que fueron construyendo lo que hoy es la marca.',
   },
   {
-    brand: 'Glatten Professional',
-    title: 'Fluido Acidificante Capilar',
-    price: '$21.990',
-    image: productAcidificante,
-    category: 'Tratamiento',
-    description:
-      'Tratamiento acidificante pensado para cabellos porosos o procesados que necesitan recuperar suavidad y apariencia uniforme.',
-    benefits: ['Ayuda a sellar la cuticula', 'Mejora la suavidad', 'Ideal post color'],
-    size: '250 ml',
-  },
-  {
-    brand: 'La Bella Liss',
-    title: 'Kit Zero Frizz shampoo + acondicionador',
-    price: '$24.990',
-    image: productZeroFrizz,
-    category: 'Control de frizz',
-    description:
-      'Rutina de limpieza y acondicionamiento para disciplinar el cabello y prolongar una terminacion suave y ordenada.',
-    benefits: ['Limpieza suave', 'Mayor manejabilidad', 'Rutina completa'],
-    size: 'Kit 2 productos',
-  },
-  {
-    brand: 'Brazilian Hair Seduction',
-    title: 'Plastica de Cacau profesional',
-    price: '$29.990',
-    image: productCacau,
-    category: 'Nutricion',
-    description:
-      'Mascarilla de nutricion intensa con cacao para cabellos que buscan cuerpo, brillo y una sensacion profundamente acondicionada.',
-    benefits: ['Nutricion intensa', 'Cabello mas brillante', 'Suavidad profunda'],
-    size: '1 kg',
-  },
-  {
-    brand: 'Glatten Professional',
-    title: 'Kit Summer proteccion termoactiva',
-    price: '$27.990',
-    image: productSummer,
-    category: 'Proteccion',
-    description:
-      'Kit de cuidado diario para proteger el cabello frente al calor, la exposicion ambiental y la perdida de hidratacion.',
-    benefits: ['Proteccion termica', 'Cuidado diario', 'Ayuda a mantener el brillo'],
-    size: 'Kit 3 productos',
+    label: 'Identidad',
+    title: 'Raíces, historia y significado',
+    text:
+      'El nombre Susana Riquelme nace como un homenaje personal. Más que una marca, representa una filosofía basada en el respeto por las personas, el trabajo en equipo y la experiencia de cada clienta.',
   },
 ]
 
-const productBrands = ['Todos', ...new Set(products.map((product) => product.brand))]
-const productCategories = ['Todas', ...new Set(products.map((product) => product.category))]
+const historyTimeline = [
+  {
+    date: '2019',
+    place: 'Penco',
+    title: 'Inicio como Cute Nails',
+    text: 'El proyecto comienza con servicios de uñas y peluquería básica.',
+  },
+  {
+    date: 'Crecimiento',
+    place: 'Nueva etapa',
+    title: 'Expansión del servicio',
+    text: 'Primeras experiencias de desarrollo del salón y fortalecimiento de la propuesta.',
+  },
+  {
+    date: 'Concepción',
+    place: 'Centro',
+    title: 'Mayor espacio y clientela',
+    text: 'Mudanza a oficina en Concepción, con más comodidad y nuevas oportunidades.',
+  },
+  {
+    date: 'Plaza de Armas',
+    place: 'Piso 7',
+    title: 'Consolidación profesional',
+    text: 'El servicio se fortalece en un espacio más amplio, formal y preparado para crecer.',
+  },
+  {
+    date: 'Actualidad',
+    place: 'Susana Riquelme',
+    title: 'Identidad propia',
+    text: 'Nace la marca actual y se consolida el equipo de trabajo con una mirada clara.',
+  },
+]
+
+const buildServiceGroups = (
+  categories: ServiceCategory[],
+  items: ServiceItem[],
+) =>
+  [...categories]
+    .filter((category) => category.active)
+    .sort((first, second) => first.order - second.order)
+    .map((category) => ({
+      ...category,
+      items: items
+        .filter((item) => item.active && item.categoryId === category.id)
+        .sort((first, second) => first.order - second.order),
+    }))
+
 const productsPerPage = 9
 
 const alliances = [
   {
-    name: 'Josse Calabriano',
+    name: 'Servicios de belleza',
     handle: '@jossecalabriano',
     url: 'https://www.instagram.com/jossecalabriano/',
     initials: 'JC',
-    label: 'Alianza local',
+    label: 'Colaboración externa',
+    description:
+      'Dentro de nuestro espacio contamos con una profesional independiente especializada en servicios de uñas, manos, pies y pestañas. Su atención funciona de manera autónoma dentro del salón, complementando nuestra experiencia de belleza.',
+    highlights: [
+      'Uñas',
+      'Manos y pies',
+      'Pestañas',
+      'Atención personalizada dentro del salón',
+    ],
+    image: salonStations,
   },
   {
-    name: 'Bettina Joyas',
+    name: 'Betina Joyas',
     handle: '@bettina_joyas',
     url: 'https://www.instagram.com/bettina_joyas/',
     initials: 'BJ',
-    label: 'Alianza local',
-    image: accessoriesDetail,
-  },
-]
-
-const newsItems = [
-  {
-    category: 'Novedades',
-    date: 'Fecha por definir',
-    title: 'Título por poner',
-    description: 'Descripción por poner.',
-    image: salonReception,
-  },
-  {
-    category: 'Noticias del salón',
-    date: 'Fecha por definir',
-    title: 'Título por poner',
-    description: 'Descripción por poner.',
-    image: salonChairs,
-  },
-  {
-    category: 'Comunidad',
-    date: 'Fecha por definir',
-    title: 'Título por poner',
-    description: 'Descripción por poner.',
-    image: accessoriesDetail,
+    label: 'Punto de venta autorizado',
+    description:
+      'En nuestro salón encontrarás una selección exclusiva de joyas Betina, disponibles para venta directa en tienda. Betina es una marca independiente y Susana Riquelme actúa como punto de venta autorizado dentro de su espacio.',
+    highlights: [
+      'Elegancia, diseño y estilo',
+      'Selección disponible en tienda',
+      'Compra directa en el salón',
+    ],
+    image: salonJewelryDetail,
   },
 ]
 
 const gallery = [
   {
+    src: salonFacade,
+    alt: 'Entrada de Susana Riquelme Salon de Belleza',
+  },
+  {
     src: salonReception,
-    alt: 'Recepcion del salon Susana Riquelme con logo iluminado',
+    alt: 'Recepción y área principal del salón Susana Riquelme',
   },
   {
-    src: salonWide,
-    alt: 'Area principal del salon con sillones de peluqueria',
+    src: salonHero,
+    alt: 'Área principal del salón con sillones y productos profesionales',
   },
   {
-    src: salonChairs,
-    alt: 'Zona de lavado y colorimetria del salon',
+    src: salonStations,
+    alt: 'Estaciones de peluquería del salón',
   },
   {
-    src: accessoriesDetail,
-    alt: 'Vitrina de accesorios disponibles en el salon',
+    src: salonJewelry,
+    alt: 'Vitrina de joyas disponibles en el salón',
+  },
+  {
+    src: salonLogoDetail,
+    alt: 'Detalle del logo interior de Susana Riquelme',
   },
 ]
 
@@ -354,24 +315,104 @@ function SocialIcon({ icon }: { icon: string }) {
   )
 }
 
-function App() {
+function Landing() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<(typeof products)[number] | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedTeamMember, setSelectedTeamMember] = useState<
+    (typeof team)[number] | null
+  >(null)
+  const [managedProducts, setManagedProducts] = useState<Product[]>([])
+  const [managedNews, setManagedNews] = useState<NewsItem[]>([])
+  const [managedServiceCategories, setManagedServiceCategories] = useState<
+    ServiceCategory[]
+  >([])
+  const [managedServiceItems, setManagedServiceItems] = useState<ServiceItem[]>([])
   const [productQuery, setProductQuery] = useState('')
   const [selectedProductBrand, setSelectedProductBrand] = useState('Todos')
   const [selectedProductCategory, setSelectedProductCategory] = useState('Todas')
   const [productSort, setProductSort] = useState('featured')
   const [productPage, setProductPage] = useState(1)
   const [clientName, setClientName] = useState('')
-  const [selectedService, setSelectedService] = useState(serviceOptions[0])
+  const [selectedService, setSelectedService] = useState('')
   const [clientMessage, setClientMessage] = useState('')
+  const products = useMemo(
+    () => managedProducts.filter((product) => product.active),
+    [managedProducts],
+  )
+  const newsItems = useMemo(
+    () => managedNews.filter((item) => item.active),
+    [managedNews],
+  )
+  const serviceGroups = useMemo(() => {
+    return buildServiceGroups(managedServiceCategories, managedServiceItems)
+  }, [managedServiceCategories, managedServiceItems])
+  const serviceOptions = useMemo(
+    () =>
+      serviceGroups.flatMap((group) =>
+        group.items.map((item) => `${group.title} - ${item.name} (${item.price})`),
+      ),
+    [serviceGroups],
+  )
+  const productBrands = useMemo(
+    () => ['Todos', ...new Set(products.map((product) => product.brand))],
+    [products],
+  )
+  const productCategories = useMemo(
+    () => ['Todas', ...new Set(products.map((product) => product.category))],
+    [products],
+  )
+
+  useEffect(() => {
+    const unsubscribeProducts = subscribeToProducts(setManagedProducts)
+    const unsubscribeNews = subscribeToNews(setManagedNews)
+    const unsubscribeServiceCategories = subscribeToServiceCategories(
+      setManagedServiceCategories,
+    )
+    const unsubscribeServiceItems = subscribeToServiceItems(setManagedServiceItems)
+    trackSiteEvent('page_view')
+
+    const seenSections = new Set<string>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting || seenSections.has(entry.target.id)) return
+          seenSections.add(entry.target.id)
+          trackSiteEvent('section_view', { section: entry.target.id })
+        })
+      },
+      { threshold: 0.35 },
+    )
+
+    document
+      .querySelectorAll<HTMLElement>('main section[id]')
+      .forEach((section) => observer.observe(section))
+
+    return () => {
+      unsubscribeProducts()
+      unsubscribeNews()
+      unsubscribeServiceCategories()
+      unsubscribeServiceItems()
+      observer.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!serviceOptions.length) {
+      setSelectedService('')
+      return
+    }
+
+    setSelectedService((current) =>
+      current && serviceOptions.includes(current) ? current : serviceOptions[0],
+    )
+  }, [serviceOptions])
 
   const bookingMessage = useMemo(() => {
     const lines = [
-      'Hola Susana Riquelme Peluqueria, quiero reservar una hora.',
+      'Hola Susana Riquelme Peluquería, quiero reservar una hora.',
       `Nombre: ${clientName || 'Por completar'}`,
-      `Servicio: ${selectedService}`,
+      `Servicio: ${selectedService || 'Consulta general'}`,
       `Mensaje: ${clientMessage || 'Sin mensaje adicional'}`,
     ]
 
@@ -420,7 +461,7 @@ function App() {
 
       return 0
     })
-  }, [productQuery, productSort, selectedProductBrand, selectedProductCategory])
+  }, [productQuery, productSort, products, selectedProductBrand, selectedProductCategory])
 
   const totalProductPages = Math.max(
     1,
@@ -466,16 +507,28 @@ function App() {
 
     setIsBookingOpen(true)
     setIsMenuOpen(false)
+    trackSiteEvent('booking_open', { itemName: service || 'Reserva general' })
+  }
+
+  const openProduct = (product: Product) => {
+    setSelectedProduct(product)
+    trackSiteEvent('product_view', {
+      itemId: product.id || product.title,
+      itemName: product.title,
+      section: product.category,
+    })
   }
 
   useEffect(() => {
-    const isModalOpen = isBookingOpen || selectedProduct !== null
+    const isModalOpen =
+      isBookingOpen || selectedProduct !== null || selectedTeamMember !== null
     document.body.style.overflow = isModalOpen ? 'hidden' : ''
 
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsBookingOpen(false)
         setSelectedProduct(null)
+        setSelectedTeamMember(null)
       }
     }
 
@@ -484,7 +537,7 @@ function App() {
       document.body.style.overflow = ''
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [isBookingOpen, selectedProduct])
+  }, [isBookingOpen, selectedProduct, selectedTeamMember])
 
   return (
     <div className="app-shell">
@@ -515,11 +568,13 @@ function App() {
         </button>
 
         <nav className="site-nav" aria-label="Navegacion principal">
-          <a href="#nosotras" onClick={() => setIsMenuOpen(false)}>Nosotras</a>
+          <a href="#equipo" onClick={() => setIsMenuOpen(false)}>Nuestro Equipo</a>
           <a href="#servicios" onClick={() => setIsMenuOpen(false)}>Servicios</a>
           <a href="#productos" onClick={() => setIsMenuOpen(false)}>Productos</a>
           <a href="#alianzas" onClick={() => setIsMenuOpen(false)}>Alianzas</a>
-          <a href="#novedades" onClick={() => setIsMenuOpen(false)}>Novedades</a>
+          {newsItems.length ? (
+            <a href="#novedades" onClick={() => setIsMenuOpen(false)}>Novedades</a>
+          ) : null}
           <a href="#ubicacion" onClick={() => setIsMenuOpen(false)}>Ubicacion</a>
         </nav>
 
@@ -537,22 +592,22 @@ function App() {
           <img
             className="hero-image"
             src={salonHero}
-            alt="Interior del salon Susana Riquelme Peluqueria en Concepcion"
+            alt="Interior del salón Susana Riquelme Peluquería en Concepción"
           />
           <div className="hero-shade" />
 
           <div className="hero-content">
             <img className="hero-logo" src={srLogoWhite} alt="" />
-            <p className="eyebrow">Concepcion, Chile</p>
+            <p className="eyebrow">Peluquería en Concepción, Chile</p>
             <h1>
               <span>Susana</span>
               <span>Riquelme</span>
-              <span>Peluqueria</span>
+              <span>Peluquería</span>
             </h1>
             <p className="hero-copy">
-              Cuidado capilar personalizado, colorimetria profesional y
-              productos seleccionados para que tu cabello se vea y se sienta
-              como merece.
+              Salón de belleza en Concepción con cuidado capilar personalizado,
+              colorimetría profesional y productos seleccionados para que tu
+              cabello se vea y se sienta como merece.
             </p>
 
             <div className="hero-actions" aria-label="Acciones principales">
@@ -571,15 +626,15 @@ function App() {
         </section>
 
         <section className="intro-section" id="salon">
-          <div className="section-kicker">El salon</div>
+          <div className="section-kicker">El salón</div>
           <div className="intro-grid">
             <div className="intro-copy">
               <h2>Un espacio creado para cuidar tu cabello con criterio.</h2>
               <p>
-                En Susana Riquelme Peluqueria la experiencia parte con una
-                asesoria cercana: se evalua el estado del cabello, el objetivo
-                del look y la mantencion ideal para que el resultado siga
-                luciendo bien despues de salir del salon.
+                En Susana Riquelme Peluquería la experiencia parte con una
+                asesoría cercana: se evalúa el estado del cabello, el objetivo
+                del look y la mantención ideal para que el resultado siga
+                luciendo bien después de salir del salón.
               </p>
               <div className="rating-card" aria-label="Puntuacion Google">
                 <span>5.0</span>
@@ -587,16 +642,19 @@ function App() {
                 <p>Calificacion en Google</p>
               </div>
             </div>
-            <div className="intro-media" aria-label="Fotos del salon">
-              <img src={salonReception} alt="Recepcion del salon" />
-              <img src={salonWide} alt="Sillones y area de atencion" />
+            <div className="intro-media" aria-label="Fotos del salón">
+              <img src={salonFacade} alt="Entrada del salón Susana Riquelme" />
+              <img src={salonReception} alt="Recepción del salón" />
             </div>
           </div>
         </section>
 
         <section className="brands-band" aria-label="Marcas profesionales">
           {brandLogos.map((brand) => (
-            <div className="brand-pill" key={brand.name}>
+            <div
+              className={`brand-pill${brand.name.includes('Brasilian') ? ' is-brasilian' : ''}`}
+              key={brand.name}
+            >
               {brand.image ? (
                 <img src={brand.image} alt={brand.name} />
               ) : (
@@ -606,28 +664,47 @@ function App() {
           ))}
         </section>
 
-        <section className="team-section" id="nosotras">
+        <section className="team-section" id="equipo">
           <div className="section-heading team-heading">
             <div>
-              <p className="section-kicker">Nosotras</p>
-              <h2>Tres miradas, una misma forma de cuidar tu cabello.</h2>
+              <p className="section-kicker">Nuestro Equipo</p>
+              <h2>Profesionales que cuidan tu cabello desde la confianza.</h2>
             </div>
-            <p>Descripción general por poner.</p>
+            <p>
+              Creemos que la belleza comienza con la confianza. Por eso, cada
+              profesional de nuestro salón trabaja de manera personalizada,
+              respetando la esencia, el estilo y las necesidades de cada clienta.
+            </p>
           </div>
 
           <div className="team-grid">
-            {team.map((member, index) => (
-              <article className="team-card" key={member.name}>
-                <div className="team-portrait" aria-hidden="true">
-                  <span>{member.initials}</span>
-                  <small>0{index + 1}</small>
+            {team.map((member) => (
+              <article
+                className="team-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedTeamMember(member)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setSelectedTeamMember(member)
+                  }
+                }}
+                key={member.name}
+              >
+                <div className="team-portrait">
+                  <img
+                    src={member.image}
+                    alt={`Retrato de ${member.name}`}
+                    loading="lazy"
+                  />
                 </div>
                 <div className="team-card-body">
                   <div>
                     <p>{member.role}</p>
                     <h3>{member.name}</h3>
                   </div>
-                  <p>{member.description}</p>
+                  <span className="team-profile-button">Ver perfil</span>
                 </div>
               </article>
             ))}
@@ -635,14 +712,52 @@ function App() {
         </section>
 
         <section className="history-section" id="historia">
-          <div className="history-media">
-            <img src={salonWide} alt="Interior de Susana Riquelme Peluqueria" />
-            <div className="history-seal" aria-hidden="true">SR</div>
+          <div className="history-layout">
+            <div className="history-media">
+              <img src={salonStations} alt="Estaciones de trabajo de Susana Riquelme Peluquería" />
+            </div>
+            <div className="history-copy">
+              <p className="section-kicker">Nuestra historia</p>
+              <h2>Susana Riquelme, una historia con propósito.</h2>
+              <p>
+                Hoy, Susana Riquelme es un espacio consolidado donde la belleza
+                se vive con calma, dedicación y profesionalismo.
+              </p>
+              <p>
+                Un lugar donde cada detalle importa y donde el crecimiento
+                continúa con la misma pasión del primer día.
+              </p>
+            </div>
           </div>
-          <div className="history-copy">
-            <p className="section-kicker">Nuestra historia</p>
-            <h2>La historia de Susana Riquelme.</h2>
-            <p>Descripción por poner.</p>
+
+          <div className="history-story-grid" aria-label="Pilares de la historia del salón">
+            {historyHighlights.map((item) => (
+              <article key={item.label}>
+                <span>{item.label}</span>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="history-timeline-block">
+            <div className="history-timeline-heading">
+              <p className="section-kicker">Nuestra evolución</p>
+              <h3>De un primer espacio en Penco a una marca con identidad propia en Concepción.</h3>
+            </div>
+            <ol className="history-timeline" aria-label="Línea de tiempo de Susana Riquelme">
+              {historyTimeline.map((item) => (
+                <li key={`${item.date}-${item.title}`}>
+                  <div className="timeline-marker" aria-hidden="true" />
+                  <div className="timeline-card">
+                    <span>{item.date}</span>
+                    <small>{item.place}</small>
+                    <h4>{item.title}</h4>
+                    <p>{item.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
@@ -655,12 +770,12 @@ function App() {
                 Valores referenciales para conocer las alternativas disponibles.
                 Al pedir una hora, la clienta puede elegir el servicio que
                 necesita y complementar con dudas sobre largo, tecnica o
-                mantencion.
+                mantención.
               </p>
 
-              <div className="services-photo-grid" aria-label="Fotos del salon">
-                <img src={salonChairs} alt="Zona de lavado y colorimetria" />
-                <img src={accessoriesDetail} alt="Detalle de accesorios del salon" />
+              <div className="services-photo-grid" aria-label="Fotos del salón">
+                <img src={salonReception} alt="Área principal del salón" />
+                <img src={salonLogoDetail} alt="Detalle del logo interior del salón" />
               </div>
             </div>
 
@@ -696,7 +811,7 @@ function App() {
             <div className="products-heading">
               <div>
                 <p className="section-kicker">Tienda profesional</p>
-                <h2>El cuidado del salon, tambien en casa.</h2>
+                <h2>El cuidado del salón, también en casa.</h2>
               </div>
               <div className="products-heading-copy">
                 <span>Selección Susana Riquelme</span>
@@ -792,8 +907,6 @@ function App() {
                     >
                       <option value="featured">Destacados</option>
                       <option value="name">Nombre A-Z</option>
-                      <option value="price-asc">Menor precio</option>
-                      <option value="price-desc">Mayor precio</option>
                     </select>
                   </label>
                 </div>
@@ -817,18 +930,20 @@ function App() {
               <article className="product-card" key={product.title}>
                 <div className="product-image-wrap">
                   <span className="product-category">{product.category}</span>
-                  <img src={product.image} alt={product.title} />
+                  <ContentImage source={product.image} alt={product.title} />
                 </div>
                 <div className="product-body">
                   <p>{product.brand}</p>
                   <h3>{product.title}</h3>
                   <span className="product-size">{product.size}</span>
                   <div className="product-footer">
-                    <strong>{product.price}</strong>
+                    {hasVisibleProductPrice(product.price) ? (
+                      <strong>{product.price}</strong>
+                    ) : null}
                     <button
                       className="buy-link"
                       type="button"
-                      onClick={() => setSelectedProduct(product)}
+                      onClick={() => openProduct(product)}
                     >
                       Ver producto
                     </button>
@@ -884,7 +999,7 @@ function App() {
           ) : null}
         </section>
 
-        <section className="gallery-section" aria-label="Galeria del salon">
+        <section className="gallery-section" aria-label="Galería del salón">
           {gallery.map((image) => (
             <img key={image.src} src={image.src} alt={image.alt} />
           ))}
@@ -894,9 +1009,14 @@ function App() {
           <div className="section-heading alliances-heading">
             <div>
               <p className="section-kicker">Nuestras alianzas</p>
-              <h2>Proyectos locales que complementan tu experiencia.</h2>
+              <h2>Un espacio de belleza colaborativa.</h2>
             </div>
-            <p>Descripción por poner.</p>
+            <p>
+              En Susana Riquelme creemos en el trabajo colaborativo y en crear
+              espacios que potencien la belleza en todas sus formas. Por eso,
+              contamos con alianzas estratégicas con profesionales y marcas que
+              complementan nuestra experiencia en el salón.
+            </p>
           </div>
 
           <div className="alliances-grid">
@@ -919,17 +1039,30 @@ function App() {
                   <p>{alliance.label}</p>
                   <h3>{alliance.name}</h3>
                   <span>{alliance.handle}</span>
+                  <p className="alliance-description">{alliance.description}</p>
+                  <ul className="alliance-highlights">
+                    {alliance.highlights.map((highlight) => (
+                      <li key={highlight}>{highlight}</li>
+                    ))}
+                  </ul>
                   <strong>Visitar Instagram <span aria-hidden="true">↗</span></strong>
                 </div>
               </a>
             ))}
+          </div>
+
+          <div className="alliances-note">
+            <p>
+              Más que un salón, somos un espacio donde diferentes profesionales
+              se unen para ofrecer una experiencia integral a cada clienta.
+            </p>
           </div>
         </section>
 
         <section className="social-section" id="redes">
           <div className="section-heading compact">
             <p className="section-kicker">Redes sociales</p>
-            <h2>Conecta con el salon y revisa trabajos recientes.</h2>
+            <h2>Conecta con el salón y revisa trabajos recientes.</h2>
           </div>
 
           <div className="social-frames">
@@ -952,41 +1085,58 @@ function App() {
           </div>
         </section>
 
-        <section className="news-section" id="novedades">
-          <div className="news-heading">
-            <div>
-              <p className="section-kicker">Novedades</p>
-              <h2>Noticias y momentos del salón.</h2>
+        {newsItems.length ? (
+          <section className="news-section" id="novedades">
+            <div className="news-heading">
+              <div>
+                <p className="section-kicker">Novedades</p>
+                <h2>Noticias y momentos del salón.</h2>
+              </div>
+              <p>
+                Anuncios, actividades y novedades publicadas por el equipo de
+                Susana Riquelme.
+              </p>
             </div>
-            <p>
-              Este espacio reunirá anuncios, actividades y novedades publicadas
-              por el equipo de Susana Riquelme.
-            </p>
-          </div>
 
-          <div className="news-grid">
-            {newsItems.map((item, index) => (
-              <article className={`news-card ${index === 0 ? 'is-featured' : ''}`} key={`${item.title}-${index}`}>
-                <div className="news-image">
-                  <img src={item.image} alt="" />
-                  <span>{item.category}</span>
-                </div>
-                <div className="news-body">
-                  <time>{item.date}</time>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                  <span className="news-pending">Contenido por publicar</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+            <div className="news-grid">
+              {newsItems.map((item, index) => (
+                <article className={`news-card ${index === 0 ? 'is-featured' : ''}`} key={item.id || `${item.title}-${index}`}>
+                  <div className="news-image">
+                    <ContentImage source={item.image} alt="" />
+                    <span>{item.category}</span>
+                  </div>
+                  <div className="news-body">
+                    <time dateTime={item.date}>{formatNewsDate(item.date)}</time>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    {item.link ? (
+                      <a
+                        className="news-link"
+                        href={item.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() =>
+                          trackSiteEvent('news_open', {
+                            itemId: item.id || item.title,
+                            itemName: item.title,
+                          })
+                        }
+                      >
+                        Ver más <span aria-hidden="true">↗</span>
+                      </a>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="location-section" id="ubicacion">
           <div className="location-copy">
             <img className="location-logo" src={srLogoBlack} alt="" />
             <p className="section-kicker">Ubicacion</p>
-            <h2>Caupolican 246, departamento 101, Concepcion.</h2>
+            <h2>Caupolicán 246, departamento 101, Concepción.</h2>
             <p>
               Agenda tu visita, consulta disponibilidad de productos o pide una
               recomendacion profesional antes de comprar.
@@ -1007,7 +1157,7 @@ function App() {
 
           <div className="map-frame">
             <iframe
-              title="Mapa de Susana Riquelme Peluqueria"
+              title="Mapa de Susana Riquelme Peluquería"
               src={mapSrc}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
@@ -1022,8 +1172,11 @@ function App() {
             <img src={srLogoBlack} alt="" />
           </div>
           <blockquote>
-            <p>“La belleza comienza en el instante en que decides ser tu misma.”</p>
-            <cite>Coco Chanel</cite>
+            <p>
+              “No todas las mujeres necesitan el servicio que creen necesitar.
+              Mi trabajo es ayudarte a descubrir cuál es realmente el mejor para ti.”
+            </p>
+            <cite>Maria Jose</cite>
           </blockquote>
           <nav className="footer-socials" aria-label="Redes sociales">
             {footerSocialLinks.map((social) => (
@@ -1039,8 +1192,16 @@ function App() {
             ))}
           </nav>
           <div className="footer-bottom">
-            <span>Susana Riquelme Peluqueria</span>
-            <a href="#inicio">Volver arriba</a>
+            <span>Susana Riquelme Peluquería</span>
+            <div className="footer-utility">
+              <a className="footer-admin-link" href="#admin" aria-label="Acceder al panel de administración">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6" />
+                </svg>
+              </a>
+              <a href="#inicio">Volver arriba</a>
+            </div>
           </div>
         </div>
       </footer>
@@ -1087,9 +1248,13 @@ function App() {
                   value={selectedService}
                   onChange={(event) => setSelectedService(event.target.value)}
                 >
-                  {serviceOptions.map((service) => (
-                    <option key={service}>{service}</option>
-                  ))}
+                  {serviceOptions.length ? (
+                    serviceOptions.map((service) => (
+                      <option key={service}>{service}</option>
+                    ))
+                  ) : (
+                    <option value="">Consulta general</option>
+                  )}
                 </select>
               </label>
               <label>
@@ -1108,6 +1273,55 @@ function App() {
             >
               Cotizar por WhatsApp
             </a>
+          </section>
+        </div>
+      ) : null}
+
+      {selectedTeamMember ? (
+        <div
+          className="modal-backdrop team-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelectedTeamMember(null)
+          }}
+        >
+          <section
+            className="team-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="team-modal-title"
+          >
+            <button
+              className="modal-close team-modal-close"
+              type="button"
+              onClick={() => setSelectedTeamMember(null)}
+              aria-label="Cerrar perfil de estilista"
+            >
+              ×
+            </button>
+
+            <div className="team-modal-photo">
+              <img
+                src={selectedTeamMember.image}
+                alt={`Retrato de ${selectedTeamMember.name}`}
+              />
+            </div>
+
+            <div className="team-modal-info">
+              <p>{selectedTeamMember.role}</p>
+              <h2 id="team-modal-title">{selectedTeamMember.name}</h2>
+              <p className="team-modal-description">
+                {selectedTeamMember.description}
+              </p>
+              <div className="team-modal-specialties">
+                <span>Especialidades</span>
+                <ul>
+                  {selectedTeamMember.specialties.map((specialty) => (
+                    <li key={specialty}>{specialty}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </section>
         </div>
       ) : null}
@@ -1137,10 +1351,18 @@ function App() {
 
             <div className="product-modal-gallery">
               <div className="product-modal-main-image">
-                <img src={selectedProduct.image} alt={selectedProduct.title} />
+                <ContentImage
+                  source={selectedProduct.image}
+                  alt={selectedProduct.title}
+                  mode="detail"
+                />
               </div>
               <button className="product-thumbnail is-active" type="button" aria-label="Vista principal">
-                <img src={selectedProduct.image} alt="" />
+                <ContentImage
+                  source={selectedProduct.image}
+                  alt=""
+                  mode="preview"
+                />
               </button>
             </div>
 
@@ -1150,7 +1372,9 @@ function App() {
               <p className="product-modal-category">
                 {selectedProduct.category} · {selectedProduct.size}
               </p>
-              <strong className="product-modal-price">{selectedProduct.price}</strong>
+              {hasVisibleProductPrice(selectedProduct.price) ? (
+                <strong className="product-modal-price">{selectedProduct.price}</strong>
+              ) : null}
               <p className="product-modal-description">{selectedProduct.description}</p>
 
               <div className="product-benefits">
@@ -1165,22 +1389,47 @@ function App() {
               <a
                 className="button product-buy-button"
                 href={whatsappHref(
-                  `Hola Susana Riquelme Peluqueria, quiero comprar ${selectedProduct.title} (${selectedProduct.price}).`,
+                  `Hola Susana Riquelme Peluquería, me interesa ${selectedProduct.title}.`,
                 )}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() =>
+                  trackSiteEvent('product_whatsapp', {
+                    itemId: selectedProduct.id || selectedProduct.title,
+                    itemName: selectedProduct.title,
+                    section: selectedProduct.category,
+                  })
+                }
               >
-                Comprar por WhatsApp
+                Escribir por WhatsApp
               </a>
               <small>
-                Precio referencial. Confirmaremos stock y valor final antes de
-                coordinar la compra.
+                Confirmaremos stock y valor final antes de coordinar la compra.
               </small>
             </div>
           </section>
         </div>
       ) : null}
     </div>
+  )
+}
+
+function App() {
+  const [isAdminRoute, setIsAdminRoute] = useState(
+    () => window.location.hash === '#admin',
+  )
+
+  useEffect(() => {
+    const handleHashChange = () =>
+      setIsAdminRoute(window.location.hash === '#admin')
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  return isAdminRoute ? (
+    <AdminPanel />
+  ) : (
+    <Landing />
   )
 }
 
