@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, ChevronDown, Grid2x2, Grid3x3, Rows3 } from 'lucide-react'
 import './App.css'
 import AdminPanel from './AdminPanel'
 import {
@@ -33,6 +34,13 @@ const whatsappNumber = '56986327850'
 const instagramUrl = 'https://www.instagram.com/susanariquelmepeluqueria/'
 const facebookUrl = 'https://web.facebook.com/Susanariquelmeestilista/?_rdc=1&_rdr#'
 const tiktokUrl = 'https://www.tiktok.com/@salonsusanariquelme'
+type StoreGridColumns = 1 | 2 | 3
+
+const storeGridOptions = [
+  { columns: 1 as const, label: 'Vista amplia', Icon: Rows3 },
+  { columns: 2 as const, label: 'Ver 2 columnas', Icon: Grid2x2 },
+  { columns: 3 as const, label: 'Ver 3 columnas', Icon: Grid3x3 },
+]
 
 const whatsappHref = (message: string) =>
   `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
@@ -54,6 +62,9 @@ const hasVisibleProductPrice = (price: string) => {
   const normalizedPrice = price.trim().toLocaleLowerCase('es')
   return normalizedPrice !== '' && normalizedPrice !== 'consultar'
 }
+
+const productPriceLabel = (price: string) =>
+  hasVisibleProductPrice(price) ? price : 'Consultar'
 
 const brandLogos = [
   { name: 'TRUSS Professional', image: trussLogo },
@@ -280,6 +291,8 @@ const socialFrames = [
 
 const mapSrc =
   'https://www.google.com/maps?q=Caupolican%20246%20departamento%20101%20Concepcion%20Chile&output=embed'
+const googleReviewUrl =
+  'https://www.google.com/search?q=Susana+Riquelme+Peluquer%C3%ADa+Caupolic%C3%A1n+246+Concepci%C3%B3n+rese%C3%B1as#lrd=0x96684db67bf3f69d:0x9821ecc2b0340f4a,3,,,,'
 
 function SocialIcon({ icon }: { icon: string }) {
   if (icon === 'instagram') {
@@ -334,8 +347,10 @@ function Landing() {
   const [productSort, setProductSort] = useState('featured')
   const [productPage, setProductPage] = useState(1)
   const [clientName, setClientName] = useState('')
+  const [selectedSpecialist, setSelectedSpecialist] = useState(team[0].name)
   const [selectedService, setSelectedService] = useState('')
   const [clientMessage, setClientMessage] = useState('')
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const products = useMemo(
     () => managedProducts.filter((product) => product.active),
     [managedProducts],
@@ -353,6 +368,13 @@ function Landing() {
         group.items.map((item) => `${group.title} - ${item.name} (${item.price})`),
       ),
     [serviceGroups],
+  )
+  const currentSelectedService = useMemo(
+    () =>
+      selectedService && serviceOptions.includes(selectedService)
+        ? selectedService
+        : serviceOptions[0] || '',
+    [selectedService, serviceOptions],
   )
   const productBrands = useMemo(
     () => ['Todos', ...new Set(products.map((product) => product.brand))],
@@ -397,27 +419,17 @@ function Landing() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!serviceOptions.length) {
-      setSelectedService('')
-      return
-    }
-
-    setSelectedService((current) =>
-      current && serviceOptions.includes(current) ? current : serviceOptions[0],
-    )
-  }, [serviceOptions])
-
   const bookingMessage = useMemo(() => {
     const lines = [
       'Hola Susana Riquelme Peluquería, quiero reservar una hora.',
       `Nombre: ${clientName || 'Por completar'}`,
-      `Servicio: ${selectedService || 'Consulta general'}`,
+      `Especialista: ${selectedSpecialist || 'Por definir'}`,
+      `Servicio: ${currentSelectedService || 'Consulta general'}`,
       `Mensaje: ${clientMessage || 'Sin mensaje adicional'}`,
     ]
 
     return lines.join('\n')
-  }, [clientMessage, clientName, selectedService])
+  }, [clientMessage, clientName, currentSelectedService, selectedSpecialist])
 
   const filteredProducts = useMemo(() => {
     const query = normalizeSearchText(productQuery.trim())
@@ -548,11 +560,8 @@ function Landing() {
           aria-label="Ir al inicio"
           onClick={() => setIsMenuOpen(false)}
         >
-          <span className="brand-mark" aria-hidden="true">
-            <span>S</span>
-            <span>R</span>
-          </span>
-          <span className="brand-name">Susana Riquelme</span>
+          <img className="brand-logo" src={srLogoWhite} alt="" />
+          <span className="brand-name sr-only">Susana Riquelme</span>
         </a>
 
         <button
@@ -637,9 +646,20 @@ function Landing() {
                 luciendo bien después de salir del salón.
               </p>
               <div className="rating-card" aria-label="Puntuacion Google">
-                <span>5.0</span>
-                <strong>★★★★★</strong>
-                <p>Calificacion en Google</p>
+                <div className="rating-card-score">
+                  <span>5.0</span>
+                  <div>
+                    <strong>★★★★★</strong>
+                    <p>Calificacion en Google</p>
+                  </div>
+                </div>
+                <a
+                  href={googleReviewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Dejar reseña
+                </a>
               </div>
             </div>
             <div className="intro-media" aria-label="Fotos del salón">
@@ -711,56 +731,6 @@ function Landing() {
           </div>
         </section>
 
-        <section className="history-section" id="historia">
-          <div className="history-layout">
-            <div className="history-media">
-              <img src={salonStations} alt="Estaciones de trabajo de Susana Riquelme Peluquería" />
-            </div>
-            <div className="history-copy">
-              <p className="section-kicker">Nuestra historia</p>
-              <h2>Susana Riquelme, una historia con propósito.</h2>
-              <p>
-                Hoy, Susana Riquelme es un espacio consolidado donde la belleza
-                se vive con calma, dedicación y profesionalismo.
-              </p>
-              <p>
-                Un lugar donde cada detalle importa y donde el crecimiento
-                continúa con la misma pasión del primer día.
-              </p>
-            </div>
-          </div>
-
-          <div className="history-story-grid" aria-label="Pilares de la historia del salón">
-            {historyHighlights.map((item) => (
-              <article key={item.label}>
-                <span>{item.label}</span>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="history-timeline-block">
-            <div className="history-timeline-heading">
-              <p className="section-kicker">Nuestra evolución</p>
-              <h3>De un primer espacio en Penco a una marca con identidad propia en Concepción.</h3>
-            </div>
-            <ol className="history-timeline" aria-label="Línea de tiempo de Susana Riquelme">
-              {historyTimeline.map((item) => (
-                <li key={`${item.date}-${item.title}`}>
-                  <div className="timeline-marker" aria-hidden="true" />
-                  <div className="timeline-card">
-                    <span>{item.date}</span>
-                    <small>{item.place}</small>
-                    <h4>{item.title}</h4>
-                    <p>{item.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
         <section className="services-section" id="servicios">
           <div className="services-layout">
             <div className="services-intro">
@@ -809,9 +779,14 @@ function Landing() {
         <section className="products-section" id="productos">
           <div className="products-showcase">
             <div className="products-heading">
-              <div>
-                <p className="section-kicker">Tienda profesional</p>
-                <h2>El cuidado del salón, también en casa.</h2>
+              <div className="products-title-row">
+                <div>
+                  <p className="section-kicker">Tienda profesional</p>
+                  <h2>El cuidado del salón, también en casa.</h2>
+                </div>
+                <a className="products-view-all" href="#tienda">
+                  Ver todo
+                </a>
               </div>
               <div className="products-heading-copy">
                 <span>Selección Susana Riquelme</span>
@@ -937,9 +912,7 @@ function Landing() {
                   <h3>{product.title}</h3>
                   <span className="product-size">{product.size}</span>
                   <div className="product-footer">
-                    {hasVisibleProductPrice(product.price) ? (
-                      <strong>{product.price}</strong>
-                    ) : null}
+                    <strong>{productPriceLabel(product.price)}</strong>
                     <button
                       className="buy-link"
                       type="button"
@@ -1164,6 +1137,86 @@ function Landing() {
             />
           </div>
         </section>
+
+        <section
+          className={`history-section is-collapsible ${isHistoryOpen ? 'is-open' : ''}`}
+          id="historia"
+        >
+          <div className="history-teaser">
+            <div>
+              <p className="section-kicker">Nuestra historia</p>
+              <h2>Susana Riquelme, una historia con propósito.</h2>
+              <p>
+                Un recorrido que empezó pequeño y fue creciendo con oficio,
+                confianza y una forma muy propia de mirar la belleza.
+              </p>
+            </div>
+            <button
+              className="history-toggle"
+              type="button"
+              aria-expanded={isHistoryOpen}
+              aria-controls="history-content"
+              onClick={() => setIsHistoryOpen((current) => !current)}
+            >
+              {isHistoryOpen ? 'Ocultar historia' : 'Ver nuestra historia'}
+              <span aria-hidden="true">
+                <ChevronDown size={15} strokeWidth={2.2} />
+              </span>
+            </button>
+          </div>
+
+          <div className="history-reveal" id="history-content">
+            <div className="history-reveal-inner">
+              <div className="history-layout">
+                <div className="history-media">
+                  <img src={salonStations} alt="Estaciones de trabajo de Susana Riquelme Peluquería" />
+                </div>
+                <div className="history-copy">
+                  <p className="section-kicker">La historia completa</p>
+                  <h2>De un primer espacio a una marca con identidad propia.</h2>
+                  <p>
+                    Hoy, Susana Riquelme es un espacio consolidado donde la
+                    belleza se vive con calma, dedicación y profesionalismo.
+                  </p>
+                  <p>
+                    Un lugar donde cada detalle importa y donde el crecimiento
+                    continúa con la misma pasión del primer día.
+                  </p>
+                </div>
+              </div>
+
+              <div className="history-story-grid" aria-label="Pilares de la historia del salón">
+                {historyHighlights.map((item) => (
+                  <article key={item.label}>
+                    <span>{item.label}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.text}</p>
+                  </article>
+                ))}
+              </div>
+
+              <div className="history-timeline-block">
+                <div className="history-timeline-heading">
+                  <p className="section-kicker">Nuestra evolución</p>
+                  <h3>De un primer espacio en Penco a una marca con identidad propia en Concepción.</h3>
+                </div>
+                <ol className="history-timeline" aria-label="Línea de tiempo de Susana Riquelme">
+                  {historyTimeline.map((item) => (
+                    <li key={`${item.date}-${item.title}`}>
+                      <div className="timeline-marker" aria-hidden="true" />
+                      <div className="timeline-card">
+                        <span>{item.date}</span>
+                        <small>{item.place}</small>
+                        <h4>{item.title}</h4>
+                        <p>{item.text}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="site-footer">
@@ -1243,9 +1296,22 @@ function Landing() {
                 />
               </label>
               <label>
+                Especialista
+                <select
+                  value={selectedSpecialist}
+                  onChange={(event) => setSelectedSpecialist(event.target.value)}
+                >
+                  {team.map((member) => (
+                    <option value={member.name} key={member.name}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 Servicio
                 <select
-                  value={selectedService}
+                  value={currentSelectedService}
                   onChange={(event) => setSelectedService(event.target.value)}
                 >
                   {serviceOptions.length ? (
@@ -1414,23 +1480,390 @@ function Landing() {
   )
 }
 
-function App() {
-  const [isAdminRoute, setIsAdminRoute] = useState(
-    () => window.location.hash === '#admin',
+function ProductsStorePage() {
+  const [managedProducts, setManagedProducts] = useState<Product[]>([])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [productQuery, setProductQuery] = useState('')
+  const [selectedBrand, setSelectedBrand] = useState('Todos')
+  const [selectedCategory, setSelectedCategory] = useState('Todas')
+  const [productSort, setProductSort] = useState('featured')
+  const [storeGridColumns, setStoreGridColumns] = useState<StoreGridColumns>(1)
+
+  const products = useMemo(
+    () => managedProducts.filter((product) => product.active),
+    [managedProducts],
+  )
+  const brands = useMemo(
+    () => ['Todos', ...new Set(products.map((product) => product.brand))],
+    [products],
+  )
+  const categories = useMemo(
+    () => ['Todas', ...new Set(products.map((product) => product.category))],
+    [products],
   )
 
+  const filteredProducts = useMemo(() => {
+    const query = normalizeSearchText(productQuery.trim())
+
+    const matches = products.filter((product) => {
+      const searchableText = [
+        product.title,
+        product.brand,
+        product.category,
+        product.description,
+        product.size,
+        ...product.benefits,
+      ].join(' ')
+
+      return (
+        (selectedBrand === 'Todos' || product.brand === selectedBrand) &&
+        (selectedCategory === 'Todas' || product.category === selectedCategory) &&
+        (!query || normalizeSearchText(searchableText).includes(query))
+      )
+    })
+
+    return [...matches].sort((firstProduct, secondProduct) => {
+      const firstPrice = Number(firstProduct.price.replace(/\D/g, '')) || 0
+      const secondPrice = Number(secondProduct.price.replace(/\D/g, '')) || 0
+
+      if (productSort === 'price-asc') return firstPrice - secondPrice
+      if (productSort === 'price-desc') return secondPrice - firstPrice
+      if (productSort === 'name') {
+        return firstProduct.title.localeCompare(secondProduct.title, 'es')
+      }
+
+      return firstProduct.order - secondProduct.order
+    })
+  }, [productQuery, productSort, products, selectedBrand, selectedCategory])
+
+  const resetFilters = () => {
+    setProductQuery('')
+    setSelectedBrand('Todos')
+    setSelectedCategory('Todas')
+    setProductSort('featured')
+  }
+
+  const openStoreProduct = (product: Product) => {
+    setSelectedProduct(product)
+    trackSiteEvent('product_view', {
+      itemId: product.id || product.title,
+      itemName: product.title,
+      section: 'tienda',
+    })
+  }
+
   useEffect(() => {
-    const handleHashChange = () =>
-      setIsAdminRoute(window.location.hash === '#admin')
+    const unsubscribeProducts = subscribeToProducts(setManagedProducts)
+    trackSiteEvent('section_view', { section: 'tienda' })
+    return () => unsubscribeProducts()
+  }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = selectedProduct ? 'hidden' : ''
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedProduct(null)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [selectedProduct])
+
+  return (
+    <div className="store-page">
+      <header className="store-header">
+        <a className="store-brand" href="#inicio" aria-label="Volver a la landing">
+          <img className="store-brand-logo" src={srLogoBlack} alt="" />
+        </a>
+        <a className="store-back-link" href="#inicio">
+          <ArrowLeft size={15} strokeWidth={1.9} aria-hidden="true" />
+          Volver
+        </a>
+      </header>
+
+      <main className="store-main">
+        <section className="store-hero">
+          <div>
+            <p className="section-kicker">Tienda profesional</p>
+            <h1>Productos para seguir cuidando tu cabello en casa.</h1>
+          </div>
+          <p>
+            Revisa el catálogo completo, filtra por marca o necesidad y consulta
+            directamente por WhatsApp antes de coordinar tu compra.
+          </p>
+        </section>
+
+        <section className="store-catalog" aria-label="Catálogo de productos">
+          <div className="store-catalog-head">
+            <div>
+              <p className="section-kicker">Catálogo</p>
+              <h2>Productos disponibles</h2>
+            </div>
+            <span>Compra asistida por WhatsApp</span>
+          </div>
+
+          <section className="store-controls" aria-label="Filtros del catálogo">
+            <label className="product-search store-search">
+              <span className="sr-only">Buscar productos</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="10.8" cy="10.8" r="6.6" />
+                <path d="m16 16 4.2 4.2" />
+              </svg>
+              <input
+                type="search"
+                value={productQuery}
+                onChange={(event) => setProductQuery(event.target.value)}
+                placeholder="Buscar producto o marca"
+              />
+              {productQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setProductQuery('')}
+                  aria-label="Limpiar busqueda"
+                >
+                  ×
+                </button>
+              ) : null}
+            </label>
+
+            <div className="store-sort">
+              <label>
+                <span>Categoría</span>
+                <select
+                  value={selectedCategory}
+                  onChange={(event) => setSelectedCategory(event.target.value)}
+                >
+                  {categories.map((category) => (
+                    <option key={category}>{category}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Ordenar</span>
+                <select
+                  value={productSort}
+                  onChange={(event) => setProductSort(event.target.value)}
+                >
+                  <option value="featured">Destacados</option>
+                  <option value="name">Nombre A-Z</option>
+                  <option value="price-asc">Menor precio</option>
+                  <option value="price-desc">Mayor precio</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <div className="store-layout">
+            <aside className="store-sidebar" aria-label="Marcas de productos">
+              <div>
+                <div className="store-sidebar-head">
+                  <span>Marcas</span>
+                  {selectedBrand !== 'Todos' ? (
+                    <button type="button" onClick={() => setSelectedBrand('Todos')}>
+                      Todas
+                    </button>
+                  ) : null}
+                </div>
+                <div className="store-chip-list">
+                  {brands.map((brand) => {
+                    const count =
+                      brand === 'Todos'
+                        ? products.length
+                        : products.filter((product) => product.brand === brand).length
+
+                    return (
+                      <button
+                        className={selectedBrand === brand ? 'is-active' : ''}
+                        type="button"
+                        aria-pressed={selectedBrand === brand}
+                        onClick={() => setSelectedBrand(brand)}
+                        key={brand}
+                      >
+                        {brand}
+                        <small>{count}</small>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </aside>
+
+            <section className="store-results" aria-live="polite">
+              <div className="store-results-head">
+                <p>
+                  Mostrando <strong>{filteredProducts.length}</strong> de{' '}
+                  {products.length} productos
+                </p>
+                <div className="store-results-actions">
+                  <div className="store-view-toggle" role="group" aria-label="Vista de productos">
+                    {storeGridOptions.map(({ columns, label, Icon }) => (
+                      <button
+                        className={storeGridColumns === columns ? 'is-active' : ''}
+                        type="button"
+                        aria-label={label}
+                        aria-pressed={storeGridColumns === columns}
+                        title={label}
+                        onClick={() => setStoreGridColumns(columns)}
+                        key={columns}
+                      >
+                        <Icon size={16} strokeWidth={1.85} aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                  {productQuery || selectedBrand !== 'Todos' || selectedCategory !== 'Todas' ? (
+                    <button className="store-clear-filters" type="button" onClick={resetFilters}>
+                      Limpiar filtros
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {filteredProducts.length ? (
+                <div className="store-product-grid" data-columns={storeGridColumns}>
+                  {filteredProducts.map((product) => (
+                    <article className="store-product-card" key={product.id || product.title}>
+                      <button
+                        className="store-product-image"
+                        type="button"
+                        onClick={() => openStoreProduct(product)}
+                        aria-label={`Ver ${product.title}`}
+                      >
+                        <span>{product.category}</span>
+                        <ContentImage source={product.image} alt={product.title} />
+                      </button>
+                      <div className="store-product-body">
+                        <p>{product.brand}</p>
+                        <h2>{product.title}</h2>
+                        <span>{product.size}</span>
+                        <div className="store-product-footer">
+                          <strong>{productPriceLabel(product.price)}</strong>
+                          <button type="button" onClick={() => openStoreProduct(product)}>
+                            {storeGridColumns === 1 ? 'Ver producto' : 'Ver'}
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="products-empty store-empty" role="status">
+                  <span aria-hidden="true">SR</span>
+                  <h3>No encontramos productos con esos filtros.</h3>
+                  <p>Prueba otra búsqueda o vuelve al catálogo completo.</p>
+                  <button type="button" onClick={resetFilters}>
+                    Limpiar filtros
+                  </button>
+                </div>
+              )}
+            </section>
+          </div>
+        </section>
+      </main>
+
+      {selectedProduct ? (
+        <div
+          className="modal-backdrop product-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelectedProduct(null)
+          }}
+        >
+          <section
+            className="product-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="store-product-modal-title"
+          >
+            <button
+              className="modal-close product-modal-close"
+              type="button"
+              onClick={() => setSelectedProduct(null)}
+              aria-label="Cerrar detalle de producto"
+            >
+              ×
+            </button>
+
+            <div className="product-modal-gallery">
+              <div className="product-modal-main-image">
+                <ContentImage
+                  source={selectedProduct.image}
+                  alt={selectedProduct.title}
+                  mode="detail"
+                />
+              </div>
+              <button className="product-thumbnail is-active" type="button" aria-label="Vista principal">
+                <ContentImage
+                  source={selectedProduct.image}
+                  alt=""
+                  mode="preview"
+                />
+              </button>
+            </div>
+
+            <div className="product-modal-info">
+              <p className="product-modal-brand">{selectedProduct.brand}</p>
+              <h2 id="store-product-modal-title">{selectedProduct.title}</h2>
+              <p className="product-modal-category">
+                {selectedProduct.category} · {selectedProduct.size}
+              </p>
+              <strong className="product-modal-price">
+                {productPriceLabel(selectedProduct.price)}
+              </strong>
+              <p className="product-modal-description">{selectedProduct.description}</p>
+
+              <div className="product-benefits">
+                <p>Por que te encantara</p>
+                <ul>
+                  {selectedProduct.benefits.map((benefit) => (
+                    <li key={benefit}>{benefit}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <a
+                className="button product-buy-button"
+                href={whatsappHref(
+                  `Hola Susana Riquelme Peluquería, me interesa ${selectedProduct.title}.`,
+                )}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() =>
+                  trackSiteEvent('product_whatsapp', {
+                    itemId: selectedProduct.id || selectedProduct.title,
+                    itemName: selectedProduct.title,
+                    section: selectedProduct.category,
+                  })
+                }
+              >
+                Escribir por WhatsApp
+              </a>
+              <small>
+                Confirmaremos stock y valor final antes de coordinar la compra.
+              </small>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function App() {
+  const [currentHash, setCurrentHash] = useState(() => window.location.hash)
+
+  useEffect(() => {
+    const handleHashChange = () => setCurrentHash(window.location.hash)
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  return isAdminRoute ? (
-    <AdminPanel />
-  ) : (
-    <Landing />
-  )
+  if (currentHash === '#admin') return <AdminPanel />
+  if (currentHash === '#tienda') return <ProductsStorePage />
+
+  return <Landing />
 }
 
 export default App

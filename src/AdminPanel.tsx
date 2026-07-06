@@ -18,6 +18,7 @@ import {
   subscribeToAllClientVisits,
   subscribeToAnalytics,
   subscribeToAppointments,
+  subscribeToBookings,
   subscribeToClients,
   subscribeToInventory,
   subscribeToInventoryInvoiceLines,
@@ -33,6 +34,7 @@ import {
 import type {
   AuditLog,
   AppointmentRecord,
+  Booking,
   Client,
   ClientVisit,
   InventoryItem,
@@ -53,12 +55,14 @@ import ClientsPanel from './ClientsPanel'
 import InventoryPanel from './InventoryPanel'
 import AuditPanel from './AuditPanel'
 import AppointmentsPanel from './AppointmentsPanel'
+import HoursPanel from './HoursPanel'
 import { initialAppointments } from './initialAppointments'
 import { initialServiceCategories } from './servicesContent'
 import './AdminPanel.css'
 
 type AdminTab =
   | 'overview'
+  | 'hours'
   | 'appointments'
   | 'clients'
   | 'services'
@@ -161,6 +165,7 @@ const countBy = (events: SiteEvent[], field: 'section' | 'itemName') => {
 function AdminIcon({ name }: { name: AdminTab | 'logout' | 'back' }) {
   const paths = {
     overview: 'M4 13h6V4H4v9Zm10 7h6V11h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z',
+    hours: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm7 7v6m-3-3h6',
     appointments: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm3 7h3v3H8v-3Zm5 0h3',
     clients: 'M16 20v-1.5c0-2.5-1.8-4.5-4-4.5H7c-2.2 0-4 2-4 4.5V20M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM17 8h4M19 6v4',
     services: 'M4 6h16M4 12h16M4 18h16M7 4v4M12 10v4M17 16v4',
@@ -915,6 +920,7 @@ export default function AdminPanel() {
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([])
   const [events, setEvents] = useState<SiteEvent[]>([])
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [allClientVisits, setAllClientVisits] = useState<ClientVisit[]>([])
   const [inventory, setInventory] = useState<InventoryItem[]>([])
@@ -973,6 +979,10 @@ export default function AdminPanel() {
       setAppointments(nextAppointments)
       setDataError('')
     }
+    const handleBookings = (nextBookings: Booking[]) => {
+      setBookings(nextBookings)
+      setDataError('')
+    }
     const handleInventory = (nextInventory: InventoryItem[]) => {
       setInventory(nextInventory)
       setDataError('')
@@ -1014,6 +1024,7 @@ export default function AdminPanel() {
     const unsubServiceItems = subscribeToServiceItems(handleServiceItems, handleError)
     const unsubAnalytics = subscribeToAnalytics(handleEvents, handleError)
     const unsubAppointments = subscribeToAppointments(handleAppointments, handleError)
+    const unsubBookings = subscribeToBookings(handleBookings, handleError)
     const unsubClients = subscribeToClients(handleClients, handleError)
     const unsubAllVisits = subscribeToAllClientVisits(handleAllVisits, handleError)
     const unsubInventory = subscribeToInventory(handleInventory, handleError)
@@ -1033,6 +1044,7 @@ export default function AdminPanel() {
       unsubServiceItems()
       unsubAnalytics()
       unsubAppointments()
+      unsubBookings()
       unsubClients()
       unsubAllVisits()
       unsubInventory()
@@ -1091,6 +1103,7 @@ export default function AdminPanel() {
         <nav>
           {([
             ['overview', 'Analíticas'],
+            ['hours', 'Horas'],
             ['appointments', 'Finanzas'],
             ['clients', 'Clientas'],
             ['services', 'Servicios'],
@@ -1123,6 +1136,7 @@ export default function AdminPanel() {
             <p>Panel privado</p>
             <h1>
               {activeTab === 'overview' ? 'Resumen de actividad' : null}
+              {activeTab === 'hours' ? 'Gestión de horas' : null}
               {activeTab === 'appointments' ? 'Finanzas del salón' : null}
               {activeTab === 'clients' ? 'Gestión de clientas' : null}
               {activeTab === 'services' ? 'Servicios de la landing' : null}
@@ -1163,6 +1177,19 @@ export default function AdminPanel() {
 
         {activeTab === 'clients' ? (
           <ClientsPanel clients={clients} allVisits={allClientVisits} />
+        ) : null}
+
+        {activeTab === 'hours' ? (
+          <HoursPanel
+            bookings={bookings}
+            clients={clients}
+            allVisits={allClientVisits}
+            stylists={stylists}
+            serviceCategories={serviceCategories}
+            serviceItems={serviceItems}
+            appointments={visibleAppointments}
+            onNotice={setNotice}
+          />
         ) : null}
 
         {activeTab === 'appointments' ? (

@@ -94,6 +94,53 @@ export type ClientVisit = {
   amount: string
 }
 
+export type BookingPaymentMethod =
+  | 'none'
+  | 'cash'
+  | 'credit'
+  | 'debit'
+  | 'transfer'
+  | 'check'
+
+export type BookingPaymentStatus = 'pending' | 'deposit' | 'paid'
+
+export type BookingAttendanceStatus =
+  | 'no_deposit'
+  | 'deposited'
+  | 'not_performed'
+  | 'performed'
+
+export type BookingServiceLine = {
+  serviceId: string
+  serviceName: string
+  categoryId: string
+  price: number
+}
+
+export type Booking = {
+  id?: string
+  clientId: string
+  clientName: string
+  stylistId: string
+  stylistName: string
+  date: string
+  time: string
+  services: BookingServiceLine[]
+  totalAmount: number
+  depositAmount: number
+  depositPaymentMethod: BookingPaymentMethod
+  paymentStatus: BookingPaymentStatus
+  attendanceStatus: BookingAttendanceStatus
+  finalPaymentMethod: BookingPaymentMethod
+  notes: string
+  active: boolean
+  sourceAppointmentId?: string
+  sourceVisitId?: string
+  cancelledAt?: { toDate?: () => Date }
+  createdAt?: { toDate?: () => Date }
+  updatedAt?: { toDate?: () => Date }
+}
+
 export type AppointmentRecord = {
   id?: string
   date: string
@@ -205,6 +252,7 @@ export type ProductSale = {
 
 export type AuditEntity =
   | 'appointment'
+  | 'booking'
   | 'client'
   | 'visit'
   | 'product'

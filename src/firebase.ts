@@ -32,6 +32,7 @@ import type {
   AuditEntity,
   AppointmentRecord,
   AuditLog,
+  Booking,
   Client,
   ClientVisit,
   InventoryItem,
@@ -206,6 +207,17 @@ export const subscribeToAppointments = (
     onError,
   )
 
+export const subscribeToBookings = (
+  onData: (bookings: Booking[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe =>
+  onSnapshot(
+    query(collection(db, 'bookings'), orderBy('date', 'desc')),
+    (snapshot) =>
+      onData(snapshot.docs.map((item) => mapDocument<Booking>(item.id, item.data()))),
+    onError,
+  )
+
 export const subscribeToInventory = (
   onData: (items: InventoryItem[]) => void,
   onError?: (error: Error) => void,
@@ -369,6 +381,12 @@ const cleanAppointment = (appointment: AppointmentRecord) => {
   const appointmentData = { ...appointment }
   delete appointmentData.id
   return appointmentData
+}
+
+const cleanBooking = (booking: Booking) => {
+  const bookingData = { ...booking }
+  delete bookingData.id
+  return bookingData
 }
 
 const actor = () => ({
@@ -951,6 +969,233 @@ export const saveAppointment = async (appointment: AppointmentRecord) => {
         notes: 'Notas',
       }),
     ),
+  )
+  await batch.commit()
+}
+
+const bookingSlotKey = (booking: Pick<Booking, 'stylistId' | 'date' | 'time'>) =>
+  [booking.stylistId, booking.date, booking.time].join('__').replace(/[/:.\s]/g, '-')
+
+const bookingServiceSummary = (booking: Booking) =>
+  booking.services.map((service) => service.serviceName).join(', ').slice(0, 300)
+
+const servicePaymentAmounts = (booking: Booking) => {
+  const payable = booking.paymentStatus === 'paid'
+    ? Math.max(booking.totalAmount - booking.depositAmount, 0)
+    : 0
+  return {
+    serviceCash: booking.finalPaymentMethod === 'cash' ? payable : 0,
+    serviceCard:
+      booking.finalPaymentMethod === 'credit' || booking.finalPaymentMethod === 'debit'
+        ? payable
+        : 0,
+    serviceTransfer:
+      booking.finalPaymentMethod === 'transfer' || booking.finalPaymentMethod === 'check'
+        ? payable
+        : 0,
+  }
+}
+
+const bookingAppointmentData = (
+  booking: Booking,
+  appointmentId: string,
+): AppointmentRecord => ({
+  date: booking.date,
+  depositDate: booking.depositAmount ? booking.date : '',
+  depositAmount: booking.depositAmount || 0,
+  survey: '',
+  stylist: booking.stylistName,
+  clientName: booking.clientName,
+  service: bookingServiceSummary(booking),
+  ...servicePaymentAmounts(booking),
+  serviceReceipt: '',
+  productStylist: '',
+  productClientName: '',
+  productName: '',
+  productCash: 0,
+  productCard: 0,
+  productTransfer: 0,
+  productReceipt: '',
+  notes: booking.notes,
+  sourceSheet: 'Horas',
+  sourceRow: 0,
+  sourceId: appointmentId,
+})
+
+export const saveBooking = async (booking: Booking) => {
+  if (!booking.clientId || !booking.clientName.trim()) {
+    throw new Error('Selecciona una clienta para registrar la hora.')
+  }
+  if (!booking.stylistId || !booking.stylistName.trim()) {
+    throw new Error('Selecciona una estilista para registrar la hora.')
+  }
+  if (!booking.date || !booking.time) {
+    throw new Error('Ingresa fecha y hora de la atención.')
+  }
+  if (!booking.services.length) {
+    throw new Error('Agrega al menos un servicio a realizar.')
+  }
+
+  const reference = booking.id
+    ? doc(db, 'bookings', booking.id)
+    : doc(collection(db, 'bookings'))
+  const bookingId = reference.id
+  const appointmentId = booking.sourceAppointmentId || `booking-${bookingId}`
+  const visitId = booking.sourceVisitId || `booking-${bookingId}`
+  const slotId = bookingSlotKey(booking)
+  const slotReference = doc(db, 'bookingSlots', slotId)
+  const createdAt = serverTimestamp()
+
+  await runTransaction(db, async (transaction) => {
+    const previousSnapshot = await transaction.get(reference)
+    const previous = previousSnapshot.exists()
+      ? (previousSnapshot.data() as Booking)
+      : null
+    const previousSlotId = previous
+      ? bookingSlotKey({
+          stylistId: previous.stylistId,
+          date: previous.date,
+          time: previous.time,
+        })
+      : ''
+    const slotSnapshot = await transaction.get(slotReference)
+    if (
+      slotSnapshot.exists() &&
+      slotSnapshot.data().bookingId !== bookingId &&
+      slotSnapshot.data().active !== false
+    ) {
+      throw new Error('La estilista ya tiene una hora registrada en esa fecha y horario.')
+    }
+
+    if (previousSlotId && previousSlotId !== slotId) {
+      transaction.delete(doc(db, 'bookingSlots', previousSlotId))
+    }
+
+    const bookingData = {
+      ...cleanBooking(booking),
+      clientName: booking.clientName.trim(),
+      stylistName: booking.stylistName.trim(),
+      services: booking.services.map((service) => ({
+        ...service,
+        price: Math.max(Number(service.price), 0),
+      })),
+      totalAmount: Math.max(Number(booking.totalAmount), 0),
+      depositAmount: Math.max(Number(booking.depositAmount), 0),
+      notes: booking.notes.trim(),
+      active: booking.active !== false,
+      sourceAppointmentId: appointmentId,
+      sourceVisitId: visitId,
+    }
+
+    transaction.set(
+      reference,
+      {
+        ...bookingData,
+        updatedAt: createdAt,
+        ...(booking.id ? {} : { createdAt }),
+      },
+      { merge: true },
+    )
+    transaction.set(
+      slotReference,
+      {
+        bookingId,
+        stylistId: booking.stylistId,
+        stylistName: booking.stylistName,
+        date: booking.date,
+        time: booking.time,
+        active: bookingData.active,
+        updatedAt: createdAt,
+      },
+      { merge: true },
+    )
+
+    const appointmentReference = doc(db, 'appointments', appointmentId)
+    const visitReference = doc(db, 'clients', booking.clientId, 'visits', visitId)
+    if (bookingData.active && booking.attendanceStatus === 'performed') {
+      const appointmentData = bookingAppointmentData(
+        { ...booking, ...bookingData, id: bookingId },
+        appointmentId,
+      )
+      transaction.set(
+        appointmentReference,
+        {
+          ...appointmentData,
+          updatedAt: createdAt,
+          ...(previous?.attendanceStatus === 'performed' ? {} : { createdAt }),
+        },
+        { merge: true },
+      )
+      transaction.set(
+        visitReference,
+        {
+          clientId: booking.clientId,
+          date: booking.date,
+          service: bookingServiceSummary(booking),
+          colorFormula: '',
+          stylist: booking.stylistName,
+          notes: booking.notes.trim(),
+          amount: String(booking.totalAmount || 0),
+          updatedAt: createdAt,
+          ...(previous?.attendanceStatus === 'performed' ? {} : { createdAt }),
+        },
+        { merge: true },
+      )
+    } else {
+      transaction.delete(appointmentReference)
+      transaction.delete(visitReference)
+    }
+
+    transaction.set(
+      auditReference(),
+      auditData(
+        'booking',
+        bookingId,
+        booking.clientName,
+        booking.id ? 'update' : 'create',
+        describeChanges(previous, bookingData, {
+          date: 'Fecha',
+          time: 'Hora',
+          clientName: 'Clienta',
+          stylistName: 'Estilista',
+          services: 'Servicios',
+          totalAmount: 'Valor total',
+          depositAmount: 'Abono',
+          paymentStatus: 'Estado de pago',
+          attendanceStatus: 'Estado de atención',
+          notes: 'Observaciones',
+        }),
+      ),
+    )
+  })
+  return bookingId
+}
+
+export const cancelBooking = async (booking: Booking) => {
+  if (!booking.id) return
+  const reference = doc(db, 'bookings', booking.id)
+  const slotReference = doc(db, 'bookingSlots', bookingSlotKey(booking))
+  const appointmentReference = doc(db, 'appointments', booking.sourceAppointmentId || `booking-${booking.id}`)
+  const visitReference = doc(db, 'clients', booking.clientId, 'visits', booking.sourceVisitId || `booking-${booking.id}`)
+  const batch = writeBatch(db)
+  batch.set(
+    reference,
+    {
+      active: false,
+      attendanceStatus: 'not_performed',
+      cancelledAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  )
+  batch.delete(slotReference)
+  batch.delete(appointmentReference)
+  batch.delete(visitReference)
+  batch.set(
+    auditReference(),
+    auditData('booking', booking.id, booking.clientName, 'delete', [
+      `Hora anulada: ${booking.date} ${booking.time}`,
+    ]),
   )
   await batch.commit()
 }

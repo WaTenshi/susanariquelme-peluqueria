@@ -3,6 +3,7 @@ import type { AuditAction, AuditEntity, AuditLog } from './types'
 
 const entityLabels: Record<AuditEntity, string> = {
   appointment: 'Hora',
+  booking: 'Reserva',
   client: 'Clienta',
   visit: 'Atención',
   product: 'Producto',
