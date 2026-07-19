@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    base: '/susanariquelme-peluqueria/',
+    base: '/',
     plugins: [
       react(),
       babel({ presets: [reactCompilerPreset()] })
