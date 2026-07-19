@@ -240,7 +240,7 @@ function AdminLogin() {
           </label>
           {error ? <p className="admin-error" role="alert">{error}</p> : null}
           <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Verificando...' : 'Ingresar de forma segura'}
+            {isLoading ? 'Verificando...' : 'Ingresar'}
           </button>
         </form>
       </section>
