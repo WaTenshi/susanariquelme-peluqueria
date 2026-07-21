@@ -1,4 +1,3 @@
-import { getAnalytics, isSupported, logEvent } from 'firebase/analytics'
 import {
   browserLocalPersistence,
   getAuth,
@@ -58,7 +57,6 @@ const firebaseConfig = {
   projectId: getRequiredEnv('VITE_FIREBASE_PROJECT_ID'),
   messagingSenderId: getRequiredEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
   appId: getRequiredEnv('VITE_FIREBASE_APP_ID'),
-  measurementId: getRequiredEnv('VITE_FIREBASE_MEASUREMENT_ID'),
 }
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
@@ -66,11 +64,6 @@ export const auth = getAuth(app)
 export const db = getFirestore(app)
 
 void setPersistence(auth, browserLocalPersistence)
-
-const analyticsPromise =
-  typeof window === 'undefined'
-    ? Promise.resolve(null)
-    : isSupported().then((supported) => (supported ? getAnalytics(app) : null))
 
 const mapDocument = <T>(id: string, data: DocumentData) =>
   ({ id, ...data }) as T
@@ -1886,22 +1879,6 @@ export const trackSiteEvent = (
 ) => {
   if (typeof window === 'undefined' || window.location.hash === '#admin') return
 
-  void analyticsPromise.then((analytics) => {
-    if (!analytics) return
-    if (name === 'page_view') {
-      logEvent(analytics, 'page_view', {
-        page_path: window.location.pathname,
-        page_location: window.location.href,
-      })
-    } else {
-      logEvent(analytics, name, {
-        content_type: details.section,
-        item_id: details.itemId,
-        item_name: details.itemName,
-      })
-    }
-  })
-
   void addDoc(collection(db, 'analyticsEvents'), {
     name,
     sessionId: getSessionId(),
@@ -1909,6 +1886,6 @@ export const trackSiteEvent = (
     ...details,
     createdAt: serverTimestamp(),
   }).catch(() => {
-    // The external analytics report remains active if the local summary is unavailable.
+    // La navegación nunca debe interrumpirse si el resumen estadístico no está disponible.
   })
 }

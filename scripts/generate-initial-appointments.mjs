@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import XLSX from 'xlsx'
+import readExcelFile from 'read-excel-file/node'
 
 const workbookPath = 'C:/Users/angel/Downloads/HORAS 2026.xlsx'
 const outputPath = 'src/initialAppointments.ts'
@@ -108,26 +108,19 @@ const cell = (row, index) => (index >= 0 ? row[index] : '')
 const toIsoDate = (month, day) =>
   `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
-const workbook = XLSX.readFile(workbookPath, { cellDates: true })
+const workbook = await readExcelFile(workbookPath)
 const records = []
 const skippedSheets = []
 
-workbook.SheetNames.forEach((sheetName) => {
+workbook.forEach(({ sheet: sheetName, data: rows }) => {
   if (/^copia\b/i.test(sheetName.trim())) {
     skippedSheets.push(sheetName)
     return
   }
 
   const month = monthNumbers[normalizeText(sheetName)]
-  const worksheet = workbook.Sheets[sheetName]
-  if (!month || !worksheet) return
+  if (!month) return
 
-  const rows = XLSX.utils.sheet_to_json(worksheet, {
-    header: 1,
-    defval: '',
-    raw: true,
-    blankrows: false,
-  })
   let currentDate = ''
   let header = null
 

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import readExcelFile from 'read-excel-file/browser'
 import type { AppointmentRecord } from './types'
 
 const monthNumbers: Record<string, number> = {
@@ -133,27 +133,19 @@ const toIsoDate = (year: number, month: number, day: number) =>
   `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
 export const parseHoursWorkbook = async (file: File, year = 2026) => {
-  const buffer = await file.arrayBuffer()
-  const workbook = XLSX.read(buffer, { cellDates: true })
+  const workbook = await readExcelFile(file)
   const records: AppointmentRecord[] = []
   const skippedSheets: string[] = []
 
-  workbook.SheetNames.forEach((sheetName) => {
+  workbook.forEach(({ sheet: sheetName, data: rows }) => {
     if (/^copia\b/i.test(sheetName.trim())) {
       skippedSheets.push(sheetName)
       return
     }
 
     const month = monthNumbers[normalizeText(sheetName)]
-    const worksheet = workbook.Sheets[sheetName]
-    if (!month || !worksheet) return
+    if (!month) return
 
-    const rows = XLSX.utils.sheet_to_json(worksheet, {
-      header: 1,
-      defval: '',
-      raw: true,
-      blankrows: false,
-    }) as unknown[][]
     let currentDate = ''
     let header: HeaderMap | null = null
 

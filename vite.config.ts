@@ -8,7 +8,6 @@ const requiredEnvKeys = [
   'VITE_FIREBASE_PROJECT_ID',
   'VITE_FIREBASE_MESSAGING_SENDER_ID',
   'VITE_FIREBASE_APP_ID',
-  'VITE_FIREBASE_MEASUREMENT_ID',
   'VITE_CLOUDINARY_CLOUD_NAME',
   'VITE_CLOUDINARY_UPLOAD_PRESET',
 ]
@@ -26,6 +25,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: '/',
+    build: {
+      sourcemap: false,
+    },
     plugins: [
       react(),
       babel({ presets: [reactCompilerPreset()] })

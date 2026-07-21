@@ -23,8 +23,14 @@ falla y no sube una versión rota.
 
 ## Seguridad
 
-- Las claves `VITE_*` forman parte del bundle público de React; no deben usarse
-  como credenciales privadas.
+- Las variables `VITE_*` son configuración pública del cliente: Vite incorpora
+  al bundle únicamente las variables permitidas en `src/env.ts`. GitHub Secrets
+  evita que sus valores queden escritos en el repositorio o en el workflow, pero
+  no puede ocultarlos del navegador.
+- Nunca usar variables `VITE_*` para contraseñas, tokens privados, cuentas de
+  servicio, claves privadas ni credenciales de servidor.
+- El workflow ejecuta una búsqueda de credenciales literales y una auditoría de
+  dependencias antes de compilar. Si cualquiera falla, GitHub Pages no se publica.
 - La protección real de Firestore está en `firestore.rules`: solo una cuenta
   autenticada y registrada en `admins/{uid}` puede escribir datos.
 - Restringir la API key de Firebase en Google Cloud Console por HTTP referrers:
