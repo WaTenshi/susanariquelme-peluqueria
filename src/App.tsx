@@ -571,9 +571,12 @@ function Landing() {
           aria-expanded={isMenuOpen}
           onClick={() => setIsMenuOpen((current) => !current)}
         >
-          <span />
-          <span />
-          <span />
+          <span className="menu-toggle-label">Menu</span>
+          <span className="menu-toggle-icon" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
         </button>
 
         <nav className="site-nav" aria-label="Navegacion principal">
