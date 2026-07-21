@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ChevronDown, Grid2x2, Grid3x3, Rows3 } from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  ChevronDown,
+  Grid2x2,
+  Grid3x3,
+  Rows3,
+  Sparkles,
+} from 'lucide-react'
 import './App.css'
 import AdminPanel from './AdminPanel'
 import {
@@ -138,6 +148,8 @@ const team = [
   },
 ]
 
+const undecidedSpecialistOption = 'No sé con cual estilista atenderme'
+
 const historyHighlights = [
   {
     label: 'Origen',
@@ -205,6 +217,137 @@ const buildServiceGroups = (
         .filter((item) => item.active && item.categoryId === category.id)
         .sort((first, second) => first.order - second.order),
     }))
+
+const getServiceSectionId = (title: string) =>
+  `servicio-${normalizeSearchText(title)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')}`
+
+const isSmoothingService = (title: string) =>
+  normalizeSearchText(title).includes('alisad')
+
+const getHairLength = (name: string) => {
+  const normalizedName = normalizeSearchText(name)
+
+  if (normalizedName.includes('extra')) return 'extra-long'
+  if (normalizedName.includes('medio')) return 'medium'
+  if (normalizedName.includes('largo')) return 'long'
+  return 'short'
+}
+
+type SmoothingServiceCardProps = {
+  group: ServiceCategory
+  onBook: (service?: string) => void
+}
+
+function SmoothingServiceCard({ group, onBook }: SmoothingServiceCardProps) {
+  const [selectedItemName, setSelectedItemName] = useState(
+    group.items[0]?.name || '',
+  )
+  const selectedItem =
+    group.items.find((item) => item.name === selectedItemName) || group.items[0]
+
+  if (!selectedItem) return null
+
+  const selectedService = `${group.title} - ${selectedItem.name} (${selectedItem.price})`
+
+  return (
+    <section
+      className="service-block smoothing-service"
+      id={getServiceSectionId(group.title)}
+    >
+      <header className="smoothing-service-header">
+        <div>
+          <div className="service-block-head">
+            <span>{group.kicker}</span>
+            <small>{group.accent}</small>
+          </div>
+          <h3>Alisado a tu medida.</h3>
+          <p>
+            Selecciona el largo que más se parece al tuyo para visualizar el
+            servicio y conocer su valor referencial.
+          </p>
+        </div>
+        <span className="smoothing-feature-badge">
+          <Sparkles aria-hidden="true" size={15} />
+          Experiencia interactiva
+        </span>
+      </header>
+
+      <div className="smoothing-experience">
+        <div className="smoothing-options-panel">
+          <p className="smoothing-includes">
+            <Check aria-hidden="true" size={16} />
+            {group.note || 'Incluye fluido antihumedad.'}
+          </p>
+          <div className="smoothing-options" aria-label="Seleccionar largo del cabello">
+            {group.items.map((item) => {
+              const isSelected = item.name === selectedItem.name
+
+              return (
+                <button
+                  className={isSelected ? 'is-selected' : ''}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setSelectedItemName(item.name)}
+                  key={item.name}
+                >
+                  <span className="smoothing-option-marker" aria-hidden="true" />
+                  <span>
+                    <small>Largo</small>
+                    <strong>{item.name}</strong>
+                  </span>
+                  <b>{item.price}</b>
+                </button>
+              )
+            })}
+          </div>
+          <p className="smoothing-disclaimer">
+            *{group.disclaimer || 'Valor sujeto a evaluación según largo y cantidad de cabello.'}
+          </p>
+        </div>
+
+        <div className="hair-visualizer">
+          <div className="hair-visualizer-label">
+            <span>Vista referencial</span>
+            <small>El largo cambia con tu selección</small>
+          </div>
+          <div
+            className="hair-stage"
+            data-length={getHairLength(selectedItem.name)}
+            aria-hidden="true"
+          >
+            <div className="hair-guide hair-guide-short"><span>Corto</span></div>
+            <div className="hair-guide hair-guide-medium"><span>Medio</span></div>
+            <div className="hair-guide hair-guide-long"><span>Largo</span></div>
+            <div className="hair-guide hair-guide-extra"><span>Extra largo</span></div>
+            <div className="hair-model">
+              <div className="hair-model-head" />
+              <div className="hair-model-neck" />
+              <div className="hair-model-body" />
+              <div className="hair-shape" />
+            </div>
+          </div>
+          <div className="hair-selection-summary" aria-live="polite">
+            <span>Alisado · {selectedItem.name}</span>
+            <strong>{selectedItem.price}</strong>
+          </div>
+        </div>
+      </div>
+
+      <footer className="smoothing-service-footer">
+        <p>
+          La evaluación en salón confirma el valor final y el protocolo ideal
+          para tu cabello.
+        </p>
+        <button type="button" onClick={() => onBook(selectedService)}>
+          Reservar esta opción
+          <ArrowRight aria-hidden="true" size={18} />
+        </button>
+      </footer>
+    </section>
+  )
+}
 
 const productsPerPage = 9
 
@@ -347,7 +490,7 @@ function Landing() {
   const [productSort, setProductSort] = useState('featured')
   const [productPage, setProductPage] = useState(1)
   const [clientName, setClientName] = useState('')
-  const [selectedSpecialist, setSelectedSpecialist] = useState(team[0].name)
+  const [selectedSpecialist, setSelectedSpecialist] = useState('')
   const [selectedService, setSelectedService] = useState('')
   const [clientMessage, setClientMessage] = useState('')
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
@@ -648,22 +791,40 @@ function Landing() {
                 del look y la mantención ideal para que el resultado siga
                 luciendo bien después de salir del salón.
               </p>
-              <div className="rating-card" aria-label="Puntuacion Google">
-                <div className="rating-card-score">
-                  <span>5.0</span>
+              <aside className="review-cta" aria-labelledby="review-cta-title">
+                <div className="review-cta-header">
+                  <span className="google-mark" aria-hidden="true">G</span>
+                  <span>Tu opinión importa</span>
+                </div>
+
+                <div className="review-cta-rating" aria-label="5 de 5 estrellas en Google">
+                  <strong>5.0</strong>
                   <div>
-                    <strong>★★★★★</strong>
-                    <p>Calificacion en Google</p>
+                    <span className="review-stars" aria-hidden="true">★★★★★</span>
+                    <p>Calificación en Google</p>
                   </div>
                 </div>
+
+                <div className="review-cta-copy">
+                  <h3 id="review-cta-title">¿Te gustó tu visita?</h3>
+                  <p>
+                    Comparte tu experiencia y ayuda a otras personas a elegir
+                    su próximo cambio con confianza.
+                  </p>
+                </div>
+
                 <a
+                  className="review-cta-button"
                   href={googleReviewUrl}
                   target="_blank"
                   rel="noreferrer"
+                  onClick={() => trackSiteEvent('review_click', { section: 'salon' })}
                 >
-                  Dejar reseña
+                  <span>Dejar mi reseña en Google</span>
+                  <ArrowUpRight aria-hidden="true" size={19} strokeWidth={1.8} />
                 </a>
-              </div>
+                <small>Toma menos de un minuto</small>
+              </aside>
             </div>
             <div className="intro-media" aria-label="Fotos del salón">
               <img src={salonFacade} alt="Entrada del salón Susana Riquelme" />
@@ -735,46 +896,90 @@ function Landing() {
         </section>
 
         <section className="services-section" id="servicios">
-          <div className="services-layout">
-            <div className="services-intro">
-              <p className="section-kicker">Servicios</p>
-              <h2>Listado claro para orientar tu visita.</h2>
-              <p>
-                Valores referenciales para conocer las alternativas disponibles.
-                Al pedir una hora, la clienta puede elegir el servicio que
-                necesita y complementar con dudas sobre largo, tecnica o
-                mantención.
-              </p>
-
-              <div className="services-photo-grid" aria-label="Fotos del salón">
-                <img src={salonReception} alt="Área principal del salón" />
-                <img src={salonLogoDetail} alt="Detalle del logo interior del salón" />
+          <div className="services-shell">
+            <header className="services-hero">
+              <div className="services-hero-copy">
+                <p className="section-kicker">Servicios</p>
+                <h2>Tu próximo cambio empieza por elegir bien.</h2>
+                <p>
+                  Explora cada servicio, compara valores y reserva la opción que
+                  mejor se acerca a lo que buscas. Siempre confirmamos el
+                  diagnóstico antes de comenzar.
+                </p>
+                <div className="services-benefits" aria-label="Beneficios del servicio">
+                  <span><Check aria-hidden="true" size={15} />Valores referenciales</span>
+                  <span><Check aria-hidden="true" size={15} />Asesoría personalizada</span>
+                </div>
               </div>
-            </div>
+              <figure className="services-hero-visual">
+                <img src={salonHero} alt="Área de atención de Susana Riquelme Peluquería" />
+                <figcaption>
+                  <span>Una experiencia pensada para ti</span>
+                  <small>Cuidado, técnica y criterio profesional</small>
+                </figcaption>
+              </figure>
+            </header>
+
+            <nav className="services-nav" aria-label="Explorar categorías de servicios">
+              <span>Explorar</span>
+              <div>
+                {serviceGroups.map((group) => (
+                  <a href={`#${getServiceSectionId(group.title)}`} key={group.title}>
+                    {group.title}
+                  </a>
+                ))}
+              </div>
+            </nav>
 
             <div className="services-list" aria-label="Listado de servicios">
-              {serviceGroups.map((group) => (
-                <section className="service-block" key={group.title}>
-                  <div className="service-block-head">
-                    <span>{group.kicker}</span>
-                    <small>{group.accent}</small>
-                  </div>
-                  <h3>{group.title}</h3>
-                  <p className="service-note">{group.note}</p>
-                  <ul>
-                    {group.items.map((item) => (
-                      <li key={item.name}>
-                        <span className="service-item-name">{item.name}</span>
-                        <span className="service-leader" aria-hidden="true" />
-                        <strong>{item.price}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                  {group.disclaimer ? (
-                    <p className="service-disclaimer">{group.disclaimer}</p>
-                  ) : null}
-                </section>
-              ))}
+              {serviceGroups.map((group, groupIndex) =>
+                isSmoothingService(group.title) ? (
+                  <SmoothingServiceCard
+                    group={group}
+                    onBook={openBooking}
+                    key={group.title}
+                  />
+                ) : (
+                  <section
+                    className="service-block service-card"
+                    id={getServiceSectionId(group.title)}
+                    key={group.title}
+                  >
+                    <div className="service-card-topline">
+                      <div className="service-block-head">
+                        <span>{group.kicker}</span>
+                        <small>{group.accent}</small>
+                      </div>
+                      <span className="service-card-number">
+                        {String(groupIndex + 1).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <h3>{group.title}</h3>
+                    <p className="service-note">{group.note}</p>
+                    <ul>
+                      {group.items.map((item) => (
+                        <li key={item.name}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openBooking(`${group.title} - ${item.name} (${item.price})`)
+                            }
+                            aria-label={`Reservar ${item.name}, ${item.price}`}
+                          >
+                            <span className="service-item-name">{item.name}</span>
+                            <span className="service-leader" aria-hidden="true" />
+                            <strong>{item.price}</strong>
+                            <ArrowUpRight aria-hidden="true" size={17} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {group.disclaimer ? (
+                      <p className="service-disclaimer">{group.disclaimer}</p>
+                    ) : null}
+                  </section>
+                ),
+              )}
             </div>
           </div>
         </section>
@@ -1248,7 +1453,20 @@ function Landing() {
             ))}
           </nav>
           <div className="footer-bottom">
-            <span>Susana Riquelme Peluquería</span>
+            <div className="footer-signature">
+              <span>Susana Riquelme Peluquería</span>
+              <nav className="footer-legal-links" aria-label="Información legal">
+                <a href="#terminos" target="_blank" rel="noreferrer">
+                  Términos y condiciones
+                </a>
+                <a href="#devoluciones" target="_blank" rel="noreferrer">
+                  Devoluciones y reembolsos
+                </a>
+                <a href="#privacidad" target="_blank" rel="noreferrer">
+                  Privacidad de datos
+                </a>
+              </nav>
+            </div>
             <div className="footer-utility">
               <a className="footer-admin-link" href="#admin" aria-label="Acceder al panel de administración">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1304,6 +1522,7 @@ function Landing() {
                   value={selectedSpecialist}
                   onChange={(event) => setSelectedSpecialist(event.target.value)}
                 >
+                  <option value="">{undecidedSpecialistOption}</option>
                   {team.map((member) => (
                     <option value={member.name} key={member.name}>
                       {member.name}
@@ -1854,6 +2073,889 @@ function ProductsStorePage() {
   )
 }
 
+const legalSections = [
+  { id: 'identificacion', label: 'Identificación' },
+  { id: 'uso-del-sitio', label: 'Uso del sitio' },
+  { id: 'servicios-y-precios', label: 'Servicios y precios' },
+  { id: 'reservas', label: 'Reservas' },
+  { id: 'prestacion', label: 'Prestación del servicio' },
+  { id: 'cambios', label: 'Cambios y cancelaciones' },
+  { id: 'retracto', label: 'Derecho a retracto' },
+  { id: 'productos', label: 'Productos' },
+  { id: 'datos-personales', label: 'Datos personales' },
+  { id: 'responsabilidad', label: 'Responsabilidad' },
+  { id: 'propiedad-intelectual', label: 'Propiedad intelectual' },
+  { id: 'reclamos', label: 'Consultas y reclamos' },
+]
+
+type PolicyPageProps = {
+  title: string
+  description: string
+  updated: string
+  sections: { id: string; label: string }[]
+  noteTitle: string
+  note: string
+  contactMessage: string
+  children: ReactNode
+}
+
+function PolicyPage({
+  title,
+  description,
+  updated,
+  sections,
+  noteTitle,
+  note,
+  contactMessage,
+  children,
+}: PolicyPageProps) {
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = `${title} | Susana Riquelme Peluquería`
+    window.scrollTo({ top: 0 })
+
+    return () => {
+      document.title = previousTitle
+    }
+  }, [title])
+
+  return (
+    <div className="legal-page">
+      <header className="legal-header">
+        <a className="legal-brand" href="/" aria-label="Volver al sitio principal">
+          <img src={srLogoBlack} alt="Susana Riquelme Peluquería" />
+        </a>
+        <a className="legal-back-link" href="/">
+          <ArrowLeft aria-hidden="true" size={17} />
+          Volver al sitio
+        </a>
+      </header>
+
+      <main className="legal-main">
+        <section className="legal-hero">
+          <div>
+            <p className="section-kicker">Información legal</p>
+            <h1>{title}.</h1>
+          </div>
+          <div className="legal-hero-copy">
+            <p>{description}</p>
+            <span>Última actualización: {updated}</span>
+          </div>
+        </section>
+
+        <div className="legal-layout">
+          <aside className="legal-index">
+            <p>Contenido</p>
+            <nav aria-label={`Contenido de ${title.toLocaleLowerCase('es')}`}>
+              {sections.map((section, index) => (
+                <a href={`#${section.id}`} key={section.id}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  {section.label}
+                </a>
+              ))}
+            </nav>
+          </aside>
+
+          <article className="legal-document">
+            <div className="legal-intro-note">
+              <strong>{noteTitle}</strong>
+              <p>{note}</p>
+            </div>
+            {children}
+            <footer className="legal-document-footer">
+              <p>
+                Esta política podrá actualizarse para reflejar cambios legales u
+                operativos. La versión vigente indicará siempre su fecha de
+                actualización y se aplicará hacia el futuro.
+              </p>
+              <a href={whatsappHref(contactMessage)} target="_blank" rel="noreferrer">
+                Consultar por WhatsApp
+                <ArrowUpRight aria-hidden="true" size={17} />
+              </a>
+            </footer>
+          </article>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function TermsPage() {
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = 'Términos y condiciones | Susana Riquelme Peluquería'
+    window.scrollTo({ top: 0 })
+
+    return () => {
+      document.title = previousTitle
+    }
+  }, [])
+
+  return (
+    <div className="legal-page">
+      <header className="legal-header">
+        <a className="legal-brand" href="/" aria-label="Volver al sitio principal">
+          <img src={srLogoBlack} alt="Susana Riquelme Peluquería" />
+        </a>
+        <a className="legal-back-link" href="/">
+          <ArrowLeft aria-hidden="true" size={17} />
+          Volver al sitio
+        </a>
+      </header>
+
+      <main className="legal-main">
+        <section className="legal-hero">
+          <div>
+            <p className="section-kicker">Información legal</p>
+            <h1>Términos y condiciones.</h1>
+          </div>
+          <div className="legal-hero-copy">
+            <p>
+              Estas condiciones regulan el uso del sitio web y la solicitud de
+              servicios o productos de Susana Riquelme Peluquería.
+            </p>
+            <span>Última actualización: 21 de julio de 2026</span>
+          </div>
+        </section>
+
+        <div className="legal-layout">
+          <aside className="legal-index">
+            <p>Contenido</p>
+            <nav aria-label="Contenido de los términos y condiciones">
+              {legalSections.map((section, index) => (
+                <a href={`#${section.id}`} key={section.id}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  {section.label}
+                </a>
+              ))}
+            </nav>
+          </aside>
+
+          <article className="legal-document">
+            <div className="legal-intro-note">
+              <strong>Antes de utilizar el sitio</strong>
+              <p>
+                La navegación no genera por sí sola una obligación de compra.
+                Una reserva o adquisición sólo queda confirmada cuando el Salón
+                la acepta expresamente y comunica sus condiciones finales.
+              </p>
+            </div>
+
+            <section id="identificacion">
+              <span className="legal-section-number">01</span>
+              <div>
+                <h2>Identificación del prestador</h2>
+                <p>
+                  El sitio es operado bajo el nombre comercial <strong>Susana
+                  Riquelme Peluquería</strong>, en adelante “el Salón”, con
+                  atención presencial en Caupolicán 246, departamento 101,
+                  Concepción, Región del Biobío, Chile.
+                </p>
+                <ul>
+                  <li>Canal de contacto: WhatsApp +56 9 8632 7850.</li>
+                  <li>Instagram: @susanariquelmepeluqueria.</li>
+                  <li>Horario y disponibilidad: los informados en el sitio o al confirmar la reserva.</li>
+                </ul>
+              </div>
+            </section>
+
+            <section id="uso-del-sitio">
+              <span className="legal-section-number">02</span>
+              <div>
+                <h2>Uso del sitio y aceptación</h2>
+                <p>
+                  El sitio entrega información sobre el Salón, sus servicios,
+                  valores referenciales, productos y canales de contacto. Al
+                  solicitar una reserva o compra, la persona declara haber leído
+                  estas condiciones y proporciona información veraz y suficiente
+                  para gestionar su solicitud.
+                </p>
+                <p>
+                  El uso del sitio debe ser lícito y respetuoso. No se permite
+                  interferir con su funcionamiento, intentar acceder a áreas
+                  restringidas ni utilizar sus contenidos con fines fraudulentos.
+                </p>
+              </div>
+            </section>
+
+            <section id="servicios-y-precios">
+              <span className="legal-section-number">03</span>
+              <div>
+                <h2>Servicios, diagnóstico y precios</h2>
+                <p>
+                  Las descripciones e imágenes son informativas. Los resultados
+                  de coloración, alisado, reparación, corte u otros procedimientos
+                  dependen, entre otros factores, del diagnóstico profesional, el
+                  historial químico, la condición, cantidad y largo del cabello.
+                </p>
+                <p>
+                  Los precios publicados son referenciales cuando así se indica.
+                  Antes de iniciar un servicio que requiera evaluación, el Salón
+                  informará su alcance, valor final y eventuales servicios
+                  adicionales. Ningún cargo adicional se aplicará sin información
+                  previa y aceptación de la clienta o cliente.
+                </p>
+              </div>
+            </section>
+
+            <section id="reservas">
+              <span className="legal-section-number">04</span>
+              <div>
+                <h2>Solicitud y confirmación de reservas</h2>
+                <p>
+                  El formulario del sitio prepara un mensaje para WhatsApp. Su
+                  envío constituye una <strong>solicitud de hora</strong>, no una
+                  confirmación automática. La reserva queda confirmada únicamente
+                  cuando el Salón responde aceptando fecha, horario, profesional y
+                  servicio, y comunica cualquier condición particular aplicable.
+                </p>
+                <p>
+                  Cuando exista abono o pago anticipado, su monto, finalidad,
+                  condiciones de devolución o reprogramación y medio de pago se
+                  informarán antes de que la persona lo acepte.
+                </p>
+              </div>
+            </section>
+
+            <section id="prestacion">
+              <span className="legal-section-number">05</span>
+              <div>
+                <h2>Prestación segura del servicio</h2>
+                <p>
+                  La persona debe comunicar alergias conocidas, sensibilidad,
+                  embarazo, tratamientos médicos relevantes, uso de henna o sales
+                  metálicas, procedimientos químicos previos y cualquier
+                  antecedente que pueda afectar la seguridad o el resultado.
+                </p>
+                <p>
+                  El Salón podrá recomendar una prueba, adaptar el procedimiento o
+                  no ejecutarlo cuando la evaluación profesional indique un riesgo
+                  razonable para el cabello o la salud. Esto será explicado antes
+                  de comenzar y no limita los derechos irrenunciables de las
+                  personas consumidoras.
+                </p>
+              </div>
+            </section>
+
+            <section id="cambios">
+              <span className="legal-section-number">06</span>
+              <div>
+                <h2>Cambios, atrasos y cancelaciones</h2>
+                <p>
+                  Si necesitas cambiar o cancelar una hora, debes informarlo por
+                  WhatsApp tan pronto como sea posible. El Salón podrá proponer una
+                  reprogramación ante atrasos que impidan realizar el procedimiento
+                  de manera segura o dentro del horario reservado.
+                </p>
+                <p>
+                  Cualquier política especial de abonos, cancelación o inasistencia
+                  deberá ser informada y aceptada antes del pago. El Salón también
+                  podrá reprogramar por fuerza mayor, indisponibilidad profesional
+                  u otra causa justificada, ofreciendo una alternativa razonable.
+                </p>
+              </div>
+            </section>
+
+            <section id="retracto">
+              <span className="legal-section-number">07</span>
+              <div>
+                <h2>Derecho a retracto</h2>
+                <p>
+                  Cuando se celebre un contrato de servicio por medios electrónicos,
+                  la persona podrá ejercer el derecho a retracto dentro de los diez
+                  días siguientes a su aceptación y antes de utilizar el servicio,
+                  en los casos y con los límites establecidos por la Ley N° 19.496.
+                </p>
+                <p>
+                  El retracto puede solicitarse por WhatsApp, indicando el nombre y
+                  los antecedentes necesarios para identificar la contratación. Si
+                  sólo existe una solicitud de reserva aún no confirmada, podrá
+                  desistirse de ella por el mismo canal.
+                </p>
+              </div>
+            </section>
+
+            <section id="productos">
+              <span className="legal-section-number">08</span>
+              <div>
+                <h2>Productos y disponibilidad</h2>
+                <p>
+                  La vitrina digital permite consultar productos; no procesa pagos
+                  en línea. La compra se coordina por WhatsApp y queda sujeta a la
+                  confirmación de stock, precio total y modalidad de entrega. Las
+                  recomendaciones de uso no reemplazan las instrucciones del
+                  fabricante.
+                </p>
+                <p>
+                  Los productos cuentan con la garantía legal y los demás derechos
+                  que correspondan conforme a la Ley N° 19.496. Estas condiciones no
+                  restringen el derecho a reclamar por productos defectuosos, falta
+                  de conformidad o información incorrecta.
+                </p>
+                <a className="legal-inline-link" href="#devoluciones" target="_blank" rel="noreferrer">
+                  Revisar política de devoluciones y reembolsos
+                  <ArrowUpRight aria-hidden="true" size={15} />
+                </a>
+              </div>
+            </section>
+
+            <section id="datos-personales">
+              <span className="legal-section-number">09</span>
+              <div>
+                <h2>Datos personales</h2>
+                <p>
+                  El Salón podrá tratar los datos entregados voluntariamente —por
+                  ejemplo, nombre, teléfono, servicio solicitado, mensajes y datos
+                  necesarios para la atención— para responder consultas, gestionar
+                  reservas, prestar el servicio, mantener registros administrativos
+                  y proteger la seguridad del sitio.
+                </p>
+                <p>
+                  También pueden generarse datos técnicos y estadísticas de uso. No
+                  se utilizarán para finalidades incompatibles ni se comunicarán a
+                  terceros, salvo proveedores tecnológicos necesarios, autorización
+                  de la persona o deber legal. Se adoptarán medidas razonables de
+                  seguridad y conservación limitada a la finalidad correspondiente.
+                </p>
+                <p>
+                  Para solicitar información, actualización, rectificación,
+                  eliminación o bloqueo de datos cuando proceda, la persona puede
+                  escribir al WhatsApp del Salón. El tratamiento se rige por la Ley
+                  N° 19.628 y, desde su entrada en vigencia, por las modificaciones
+                  introducidas por la Ley N° 21.719.
+                </p>
+                <a className="legal-inline-link" href="#privacidad" target="_blank" rel="noreferrer">
+                  Revisar política de privacidad de datos
+                  <ArrowUpRight aria-hidden="true" size={15} />
+                </a>
+              </div>
+            </section>
+
+            <section id="responsabilidad">
+              <span className="legal-section-number">10</span>
+              <div>
+                <h2>Disponibilidad y responsabilidad</h2>
+                <p>
+                  El Salón procura mantener información correcta y un sitio
+                  disponible, pero puede efectuar mantenciones o corregir errores.
+                  Las fotografías muestran trabajos o ambientes de referencia y no
+                  constituyen una promesa de resultado idéntico.
+                </p>
+                <p>
+                  Nada en estas condiciones excluye o limita la responsabilidad del
+                  Salón por incumplimiento, negligencia ni los derechos que la ley
+                  reconoce a las personas consumidoras. Los enlaces a plataformas
+                  externas se rigen además por las condiciones de sus respectivos
+                  operadores.
+                </p>
+              </div>
+            </section>
+
+            <section id="propiedad-intelectual">
+              <span className="legal-section-number">11</span>
+              <div>
+                <h2>Propiedad intelectual</h2>
+                <p>
+                  El diseño, marca, logotipos, textos, fotografías y demás contenido
+                  del sitio pertenecen al Salón o se utilizan con autorización. Se
+                  permite navegar y compartir enlaces para fines personales, pero no
+                  reproducir, modificar o explotar comercialmente el contenido sin
+                  autorización previa, salvo las excepciones legales.
+                </p>
+              </div>
+            </section>
+
+            <section id="reclamos">
+              <span className="legal-section-number">12</span>
+              <div>
+                <h2>Consultas, reclamos y legislación aplicable</h2>
+                <p>
+                  Para consultas o reclamos, puedes contactar al Salón por WhatsApp
+                  al +56 9 8632 7850. Procuraremos entregar una respuesta clara y
+                  oportuna, solicitando sólo los antecedentes necesarios para revisar
+                  el caso.
+                </p>
+                <p>
+                  Estas condiciones se rigen por las leyes de la República de Chile,
+                  especialmente la Ley N° 19.496 sobre protección de los derechos de
+                  los consumidores, el Reglamento de Comercio Electrónico y la
+                  normativa de protección de datos. Las personas conservan su derecho
+                  a recurrir al SERNAC y a los tribunales competentes.
+                </p>
+                <div className="legal-source-links">
+                  <a href="https://www.sernac.cl/portal/617/w3-article-57413.html" target="_blank" rel="noreferrer">
+                    Derecho a retracto en SERNAC <ArrowUpRight aria-hidden="true" size={15} />
+                  </a>
+                  <a href="https://www.bcn.cl/leychile/navegar?idNorma=1160403" target="_blank" rel="noreferrer">
+                    Ley N° 19.496 en Ley Chile <ArrowUpRight aria-hidden="true" size={15} />
+                  </a>
+                  <a href="https://www.bcn.cl/leychile/navegar?i=1165504" target="_blank" rel="noreferrer">
+                    Reglamento de Comercio Electrónico <ArrowUpRight aria-hidden="true" size={15} />
+                  </a>
+                </div>
+              </div>
+            </section>
+
+            <footer className="legal-document-footer">
+              <p>
+                El Salón podrá actualizar estas condiciones por cambios normativos
+                o de funcionamiento. La versión vigente indicará siempre su fecha
+                de actualización y se aplicará hacia el futuro.
+              </p>
+              <a href={whatsappHref('Hola Susana Riquelme Peluquería, tengo una consulta sobre los términos y condiciones.')} target="_blank" rel="noreferrer">
+                Consultar por WhatsApp
+                <ArrowUpRight aria-hidden="true" size={17} />
+              </a>
+            </footer>
+          </article>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+const refundPolicySections = [
+  { id: 'alcance-devoluciones', label: 'Alcance' },
+  { id: 'cambios-productos', label: 'Cambios de productos' },
+  { id: 'garantia-legal', label: 'Garantía legal' },
+  { id: 'reembolsos-productos', label: 'Reembolsos' },
+  { id: 'servicios-salon', label: 'Servicios de salón' },
+  { id: 'reservas-abonos', label: 'Reservas y abonos' },
+  { id: 'disconformidad-servicio', label: 'Disconformidad' },
+  { id: 'retracto-devoluciones', label: 'Retracto' },
+  { id: 'solicitud-revision', label: 'Cómo solicitar' },
+  { id: 'contacto-devoluciones', label: 'Contacto' },
+]
+
+function RefundPolicyPage() {
+  return (
+    <PolicyPage
+      title="Devoluciones y reembolsos"
+      description="Condiciones aplicables a productos, servicios, reservas, cambios y solicitudes de revisión gestionadas con el Salón."
+      updated="21 de julio de 2026"
+      sections={refundPolicySections}
+      noteTitle="Tus derechos se mantienen intactos"
+      note="Esta política complementa la legislación chilena y nunca limita la garantía legal, el derecho a retracto cuando corresponda ni otras facultades irrenunciables de las personas consumidoras."
+      contactMessage="Hola Susana Riquelme Peluquería, quiero solicitar una revisión, cambio o reembolso."
+    >
+      <section id="alcance-devoluciones">
+        <span className="legal-section-number">01</span>
+        <div>
+          <h2>Alcance de esta política</h2>
+          <p>
+            Esta política se aplica a productos capilares comercializados por
+            Susana Riquelme Peluquería y a servicios de peluquería prestados en el
+            salón, independientemente de que la coordinación se realice de forma
+            presencial, por WhatsApp, redes sociales o mediante este sitio.
+          </p>
+          <p>
+            Las solicitudes se analizan según la naturaleza del producto o
+            servicio, el motivo informado y los derechos establecidos en la Ley
+            N° 19.496 sobre protección de las personas consumidoras.
+          </p>
+        </div>
+      </section>
+
+      <section id="cambios-productos">
+        <span className="legal-section-number">02</span>
+        <div>
+          <h2>Cambios voluntarios de productos</h2>
+          <p>
+            Cuando no exista falla y la solicitud responda a una preferencia
+            personal, podrá pedirse la revisión de un cambio dentro de los diez
+            días corridos siguientes a la entrega. Para evaluarlo, el producto
+            debe mantenerse sin uso, cerrado o sellado cuando corresponda, con
+            envase, etiquetas y accesorios originales, junto con la boleta o un
+            comprobante válido de compra.
+          </p>
+          <p>
+            Por higiene y seguridad, los productos capilares o cosméticos abiertos,
+            usados o manipulados no admiten cambios voluntarios. Esta regla no se
+            aplica cuando exista una falla, falta de conformidad, error en la
+            entrega u otro supuesto protegido por la ley.
+          </p>
+        </div>
+      </section>
+
+      <section id="garantia-legal">
+        <span className="legal-section-number">03</span>
+        <div>
+          <h2>Garantía legal de productos</h2>
+          <p>
+            Si un producto nuevo presenta defectos, piezas faltantes, no sirve para
+            el uso informado o no corresponde a lo ofrecido, la persona podrá
+            ejercer la garantía legal dentro de los seis meses siguientes a su
+            recepción, eligiendo entre reparación gratuita, cambio o devolución
+            del dinero, cuando proceda conforme a la Ley N° 19.496.
+          </p>
+          <p>
+            El Salón podrá solicitar el producto, boleta o comprobante y antecedentes
+            razonables —como fotografías y descripción de la falla— para verificar
+            el caso. No se condicionará el ejercicio de la garantía a conservar el
+            embalaje original ni a requisitos adicionales que la ley no contemple.
+          </p>
+        </div>
+      </section>
+
+      <section id="reembolsos-productos">
+        <span className="legal-section-number">04</span>
+        <div>
+          <h2>Forma de los reembolsos</h2>
+          <p>
+            Una vez aprobado un reembolso, se utilizará preferentemente el mismo
+            medio de pago de la compra o uno distinto acordado con la persona. El
+            Salón informará cuando haya emitido la devolución; el momento en que el
+            abono se refleje puede depender del banco, emisor u operador de pago.
+          </p>
+          <p>
+            Si la devolución se origina en un error del Salón, una falla o daño
+            previo a la entrega, el Salón asumirá los costos razonables de retiro o
+            traslado que sean necesarios. En cambios voluntarios, cualquier costo
+            de traslado deberá informarse antes de que la persona lo acepte.
+          </p>
+        </div>
+      </section>
+
+      <section id="servicios-salon">
+        <span className="legal-section-number">05</span>
+        <div>
+          <h2>Servicios de salón</h2>
+          <p>
+            Los servicios son personalizados y utilizan tiempo profesional,
+            diagnóstico e insumos. Por ello, un servicio correctamente ejecutado
+            no genera una devolución automática por un cambio posterior de
+            preferencia. Sin embargo, esto no impide reclamar ante una ejecución
+            deficiente, incumplimiento de lo acordado o falta de información.
+          </p>
+          <p>
+            El resultado puede verse condicionado por el estado e historial del
+            cabello. Antes de comenzar, el Salón debe explicar las limitaciones
+            relevantes detectadas, el procedimiento y su valor final. La información
+            entregada por la clienta o cliente también debe ser completa, especialmente
+            respecto de procesos químicos, alergias o sensibilidad conocida.
+          </p>
+        </div>
+      </section>
+
+      <section id="reservas-abonos">
+        <span className="legal-section-number">06</span>
+        <div>
+          <h2>Reservas, cancelaciones y abonos</h2>
+          <p>
+            Cuando un servicio requiera abono, antes del pago se informará su monto,
+            finalidad y condiciones de reprogramación o devolución. El abono se
+            imputará al precio final del servicio, salvo que se comunique y acepte
+            expresamente otra condición válida.
+          </p>
+          <p>
+            Las condiciones aplicables a inasistencias, atrasos o cancelaciones
+            tardías deben comunicarse al confirmar la hora. Si el Salón cancela y no
+            es posible acordar una nueva fecha, devolverá el monto recibido. Ningún
+            abono se considerará perdido automáticamente cuando esa consecuencia no
+            haya sido informada y aceptada antes del pago.
+          </p>
+        </div>
+      </section>
+
+      <section id="disconformidad-servicio">
+        <span className="legal-section-number">07</span>
+        <div>
+          <h2>Disconformidad con un servicio</h2>
+          <p>
+            Si observas una diferencia relevante respecto de lo acordado, comunícala
+            por WhatsApp tan pronto como sea razonablemente posible. Esto permite
+            revisar oportunamente el cabello, el diagnóstico y el procedimiento
+            realizado, sin que la demora implique por sí sola la pérdida de derechos.
+          </p>
+          <p>
+            Según el caso, la solución podrá consistir en evaluación técnica,
+            corrección sin costo, repetición parcial, reprogramación, devolución
+            total o parcial u otra medida adecuada. La respuesta se determinará por
+            los antecedentes y la legislación aplicable, no únicamente por una
+            exclusión general de responsabilidad.
+          </p>
+        </div>
+      </section>
+
+      <section id="retracto-devoluciones">
+        <span className="legal-section-number">08</span>
+        <div>
+          <h2>Derecho a retracto</h2>
+          <p>
+            En contrataciones celebradas a distancia o por medios electrónicos, la
+            persona podrá retractarse dentro de los diez días siguientes a la
+            aceptación y antes de utilizar el servicio, cuando corresponda según la
+            Ley N° 19.496. Para productos, el retracto se ejercerá dentro de los
+            plazos, condiciones y excepciones legales aplicables.
+          </p>
+          <p>
+            Las exclusiones por naturaleza del producto, higiene u otras causas sólo
+            se aplicarán cuando estén permitidas por la ley y hayan sido informadas
+            de forma clara antes de la contratación. El retracto puede solicitarse
+            por WhatsApp mediante una declaración inequívoca.
+          </p>
+        </div>
+      </section>
+
+      <section id="solicitud-revision">
+        <span className="legal-section-number">09</span>
+        <div>
+          <h2>Cómo solicitar una revisión</h2>
+          <p>Escribe al WhatsApp +56 9 8632 7850 e incluye, según corresponda:</p>
+          <ul>
+            <li>Nombre y medio de contacto.</li>
+            <li>Fecha de compra, entrega o atención.</li>
+            <li>Producto o servicio involucrado.</li>
+            <li>Boleta, comprobante u otro antecedente de la operación.</li>
+            <li>Descripción del problema y fotografías, si ayudan a revisarlo.</li>
+            <li>Solución solicitada.</li>
+          </ul>
+          <p>
+            Se pedirán únicamente antecedentes pertinentes. El Salón responderá por
+            el mismo canal o acordará otro medio de contacto.
+          </p>
+        </div>
+      </section>
+
+      <section id="contacto-devoluciones">
+        <span className="legal-section-number">10</span>
+        <div>
+          <h2>Contacto y canales externos</h2>
+          <p>
+            Canal oficial: WhatsApp +56 9 8632 7850. Atención presencial en
+            Caupolicán 246, departamento 101, Concepción, Región del Biobío.
+          </p>
+          <p>
+            Si la solución propuesta no resulta satisfactoria, la persona conserva
+            su derecho a presentar un reclamo ante el SERNAC o ejercer las acciones
+            que correspondan ante los tribunales competentes.
+          </p>
+          <div className="legal-source-links">
+            <a href="https://www.sernac.cl/portal/604/w3-propertyvalue-8062.html" target="_blank" rel="noreferrer">
+              Garantía legal en SERNAC <ArrowUpRight aria-hidden="true" size={15} />
+            </a>
+            <a href="https://www.sernac.cl/portal/617/w3-article-57413.html" target="_blank" rel="noreferrer">
+              Derecho a retracto <ArrowUpRight aria-hidden="true" size={15} />
+            </a>
+            <a href="https://www.bcn.cl/leychile/navegar?idNorma=1160403" target="_blank" rel="noreferrer">
+              Ley N° 19.496 <ArrowUpRight aria-hidden="true" size={15} />
+            </a>
+          </div>
+        </div>
+      </section>
+    </PolicyPage>
+  )
+}
+
+const privacyPolicySections = [
+  { id: 'responsable-datos', label: 'Responsable' },
+  { id: 'datos-recopilados', label: 'Datos recopilados' },
+  { id: 'finalidades-datos', label: 'Finalidades' },
+  { id: 'datos-sensibles', label: 'Datos sensibles' },
+  { id: 'comunicacion-datos', label: 'Comunicación de datos' },
+  { id: 'conservacion-seguridad', label: 'Conservación y seguridad' },
+  { id: 'derechos-titulares', label: 'Tus derechos' },
+  { id: 'menores-privacidad', label: 'Menores de edad' },
+  { id: 'contacto-privacidad', label: 'Contacto' },
+]
+
+function PrivacyPolicyPage() {
+  return (
+    <PolicyPage
+      title="Política de privacidad"
+      description="Información transparente sobre los datos personales tratados por el Salón, sus finalidades, proveedores tecnológicos y los derechos de cada titular."
+      updated="21 de julio de 2026"
+      sections={privacyPolicySections}
+      noteTitle="Privacidad desde el diseño"
+      note="Recopilamos sólo la información necesaria para atender, gestionar reservas y mantener la operación del Salón. No vendemos datos personales ni utilizamos este sitio para procesar tarjetas de pago."
+      contactMessage="Hola Susana Riquelme Peluquería, quiero hacer una consulta o ejercer un derecho relacionado con mis datos personales."
+    >
+      <section id="responsable-datos">
+        <span className="legal-section-number">01</span>
+        <div>
+          <h2>Responsable del tratamiento</h2>
+          <p>
+            Susana Riquelme Peluquería, con atención en Caupolicán 246,
+            departamento 101, Concepción, es responsable de las decisiones sobre
+            los datos personales tratados mediante este sitio y en la gestión de
+            su relación con clientas y clientes.
+          </p>
+          <p>
+            El canal disponible para consultas o ejercicio de derechos es WhatsApp
+            +56 9 8632 7850. Cuando el tratamiento requiera autorización conforme a
+            la ley, se solicitará de manera informada y para finalidades específicas.
+          </p>
+        </div>
+      </section>
+
+      <section id="datos-recopilados">
+        <span className="legal-section-number">02</span>
+        <div>
+          <h2>Qué datos podemos recopilar</h2>
+          <p>Según la interacción y el servicio solicitado, podemos tratar:</p>
+          <ul>
+            <li>Datos de identificación y contacto, como nombre, teléfono, correo, comuna o Instagram.</li>
+            <li>Información de reservas: servicio, profesional, fecha, horario y mensajes.</li>
+            <li>Antecedentes de atención y preferencias necesarios para dar continuidad al servicio.</li>
+            <li>Datos de transacciones, comprobantes y pagos, sin almacenar números completos de tarjetas.</li>
+            <li>Fotografías del cabello o resultados, únicamente con una finalidad informada y la autorización correspondiente.</li>
+            <li>Datos técnicos de navegación e interacción descritos en esta política.</li>
+          </ul>
+          <p>
+            El formulario público no envía directamente una base de datos de
+            reserva: prepara un mensaje que la persona decide compartir mediante
+            WhatsApp.
+          </p>
+        </div>
+      </section>
+
+      <section id="finalidades-datos">
+        <span className="legal-section-number">03</span>
+        <div>
+          <h2>Para qué utilizamos los datos</h2>
+          <ul>
+            <li>Responder consultas y confirmar, modificar o cancelar reservas.</li>
+            <li>Realizar diagnósticos, prestar servicios y mantener un historial útil de atención.</li>
+            <li>Coordinar compras, pagos, comprobantes y entrega de productos.</li>
+            <li>Gestionar reclamos, garantías, devoluciones y solicitudes de derechos.</li>
+            <li>Mantener la seguridad, prevenir usos indebidos y solucionar errores técnicos.</li>
+            <li>Obtener estadísticas internas para mejorar el sitio y la experiencia del salón.</li>
+            <li>Cumplir obligaciones legales, tributarias, contables o requerimientos de autoridad.</li>
+          </ul>
+          <p>
+            Las comunicaciones promocionales sólo se enviarán cuando exista una
+            autorización o fundamento permitido. La persona podrá solicitar su
+            término en cualquier momento por el mismo canal utilizado.
+          </p>
+        </div>
+      </section>
+
+      <section id="datos-sensibles">
+        <span className="legal-section-number">04</span>
+        <div>
+          <h2>Datos sensibles y diagnóstico</h2>
+          <p>
+            Para cuidar la seguridad del servicio puede ser necesario conocer
+            alergias, sensibilidad, embarazo, tratamientos médicos relevantes o
+            condiciones del cuero cabelludo. Estos antecedentes se solicitarán sólo
+            cuando sean pertinentes, se tratarán con confidencialidad y no se usarán
+            para publicidad ni finalidades incompatibles.
+          </p>
+          <p>
+            La persona debe evitar enviar información médica que no sea necesaria.
+            Ante una condición que requiera evaluación clínica, el Salón puede
+            recomendar consultar a un profesional de salud antes de realizar el
+            procedimiento.
+          </p>
+        </div>
+      </section>
+
+      <section id="comunicacion-datos">
+        <span className="legal-section-number">05</span>
+        <div>
+          <h2>Proveedores y comunicación de datos</h2>
+          <p>
+            No vendemos ni arrendamos datos personales. Podemos permitir su acceso a
+            proveedores tecnológicos que prestan servicios necesarios, bajo deberes
+            de confidencialidad y seguridad; comunicar antecedentes cuando la persona
+            lo autorice; o entregarlos para cumplir una obligación legal o requerimiento
+            válido de autoridad.
+          </p>
+          <p>
+            Algunos proveedores pueden almacenar o procesar información fuera de Chile.
+            En esos casos se procurará utilizar servicios reconocidos y configuraciones
+            adecuadas a la naturaleza de los datos tratados.
+          </p>
+        </div>
+      </section>
+
+      <section id="conservacion-seguridad">
+        <span className="legal-section-number">06</span>
+        <div>
+          <h2>Conservación y seguridad</h2>
+          <p>
+            Los datos se conservarán mientras sean necesarios para la atención,
+            relación con la clienta o cliente, gestión de reclamos y cumplimiento de
+            obligaciones administrativas o legales. Cuando dejen de ser necesarios y
+            no exista un deber de conservación, se eliminarán, bloquearán o anonimizarán
+            según corresponda.
+          </p>
+          <p>
+            Se aplican medidas razonables de acceso restringido, autenticación,
+            respaldo y cuidado de la información. Ningún sistema es absolutamente
+            infalible; ante un incidente relevante se adoptarán medidas de contención
+            y las comunicaciones exigidas por la normativa aplicable.
+          </p>
+        </div>
+      </section>
+
+      <section id="derechos-titulares">
+        <span className="legal-section-number">07</span>
+        <div>
+          <h2>Derechos de las personas</h2>
+          <p>
+            Conforme a la Ley N° 19.628, la persona puede solicitar información y
+            acceso a sus datos, su origen, destinatarios y finalidad; pedir la
+            rectificación de datos inexactos o desactualizados; y solicitar eliminación
+            o bloqueo cuando proceda. También puede revocar autorizaciones sin efecto
+            retroactivo, en los casos permitidos.
+          </p>
+          <p>
+            Desde el 1 de diciembre de 2026 serán aplicables además las modificaciones
+            de la Ley N° 21.719, incluidos los derechos y procedimientos que ésta
+            incorpora. Para ejercerlos, escribe al WhatsApp del Salón indicando tu
+            nombre, la solicitud concreta y antecedentes razonables para verificar tu
+            identidad. El trámite será gratuito en los casos establecidos por la ley.
+          </p>
+        </div>
+      </section>
+
+      <section id="menores-privacidad">
+        <span className="legal-section-number">08</span>
+        <div>
+          <h2>Menores de edad</h2>
+          <p>
+            El sitio no está dirigido a recopilar autónomamente datos de niños, niñas
+            o adolescentes. Cuando una persona menor de edad requiera atención, la
+            reserva y el tratamiento de información deberán gestionarse por su madre,
+            padre o representante, o con su autorización cuando corresponda según la
+            edad y la naturaleza del servicio.
+          </p>
+          <p>
+            Si se advierte que se recibieron datos de un menor sin autorización
+            suficiente, se revisarán y eliminarán cuando corresponda.
+          </p>
+        </div>
+      </section>
+
+      <section id="contacto-privacidad">
+        <span className="legal-section-number">09</span>
+        <div>
+          <h2>Contacto y marco normativo</h2>
+          <p>
+            Para consultas o solicitudes relacionadas con privacidad, contacta al
+            WhatsApp +56 9 8632 7850. Atención presencial en Caupolicán 246,
+            departamento 101, Concepción, Región del Biobío.
+          </p>
+          <p>
+            Esta política se rige actualmente por la Ley N° 19.628 sobre protección
+            de la vida privada y considera la transición hacia la Ley N° 21.719, que
+            entra en vigencia el 1 de diciembre de 2026.
+          </p>
+          <div className="legal-source-links">
+            <a href="https://www.bcn.cl/leychile/Navegar?idLey=19628" target="_blank" rel="noreferrer">
+              Ley N° 19.628 vigente <ArrowUpRight aria-hidden="true" size={15} />
+            </a>
+            <a href="https://www.bcn.cl/leychile/navegar?idNorma=1209272" target="_blank" rel="noreferrer">
+              Ley N° 21.719 <ArrowUpRight aria-hidden="true" size={15} />
+            </a>
+          </div>
+        </div>
+      </section>
+    </PolicyPage>
+  )
+}
+
 function App() {
   const [currentHash, setCurrentHash] = useState(() => window.location.hash)
 
@@ -1865,6 +2967,9 @@ function App() {
 
   if (currentHash === '#admin') return <AdminPanel />
   if (currentHash === '#tienda') return <ProductsStorePage />
+  if (currentHash === '#terminos') return <TermsPage />
+  if (currentHash === '#devoluciones') return <RefundPolicyPage />
+  if (currentHash === '#privacidad') return <PrivacyPolicyPage />
 
   return <Landing />
 }

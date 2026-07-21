@@ -97,7 +97,8 @@ export const initialServiceCategories: ServiceCategory[] = [
     title: 'Alisado',
     note: 'Incluye fluido antihumedad.',
     accent: 'Anti frizz',
-    disclaimer: '',
+    disclaimer:
+      'Valor sujeto a evaluación según largo y cantidad de cabello.',
     order: 4,
     active: true,
     items: [

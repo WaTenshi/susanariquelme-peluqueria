@@ -292,6 +292,7 @@ export type SiteEventName =
   | 'product_view'
   | 'product_whatsapp'
   | 'booking_open'
+  | 'review_click'
   | 'news_open'
 
 export type SiteEvent = {

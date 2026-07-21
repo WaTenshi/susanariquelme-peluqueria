@@ -498,7 +498,7 @@ service cloud.firestore {
         ])
         && request.resource.data.name in [
           'page_view', 'section_view', 'product_view', 'product_whatsapp',
-          'booking_open', 'news_open'
+          'booking_open', 'review_click', 'news_open'
         ]
         && request.resource.data.sessionId is string
         && request.resource.data.sessionId.size() <= 100

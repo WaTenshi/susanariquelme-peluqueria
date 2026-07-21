@@ -853,6 +853,7 @@ function AnalyticsView({ events }: { events: SiteEvent[] }) {
     product_view: 'Producto abierto',
     product_whatsapp: 'Consulta de producto',
     booking_open: 'Reserva iniciada',
+    review_click: 'Reseña iniciada',
     news_open: 'Novedad abierta',
   }
 
