@@ -1,5 +1,6 @@
 .app-shell,
-.store-page {
+.store-page,
+.seo-route-page {
   --font-elegant-ui: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --font-soft-serif: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   --font-catalogue: Cinzel, 'Trajan Pro', 'Palatino Linotype', Georgia, serif;
@@ -14,6 +15,15 @@
   background:
     radial-gradient(circle at 82% 8%, rgba(62, 118, 111, 0.28), transparent 28rem),
     linear-gradient(180deg, #050505 0%, #111111 42%, #f6f3ee 42%, #f6f3ee 100%);
+}
+
+.admin-loading {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  color: #5f5148;
+  background: #f6f3ee;
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
 }
 
 .site-header {
@@ -5738,5 +5748,359 @@
 
   .store-chip-list button:first-child {
     grid-column: auto;
+  }
+}
+
+/* Static content shown before React starts and available to search crawlers. */
+.seo-prerender-shell {
+  min-height: 100svh;
+  padding: clamp(1rem, 4vw, 3rem);
+  color: #201a16;
+  background: #f7f3ee;
+  font-family: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.seo-prerender-shell main {
+  display: grid;
+  gap: 1rem;
+  width: min(1120px, 100%);
+  margin: 1rem auto 0;
+}
+
+.seo-prerender-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.seo-prerender-nav a,
+.seo-prerender-shell main a {
+  color: #694f40;
+}
+
+.seo-prerender-nav a {
+  padding: 0.55rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid rgba(105, 79, 64, 0.16);
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.seo-prerender-shell section {
+  padding: clamp(1.3rem, 4vw, 2.8rem);
+  background: #ffffff;
+  border: 1px solid rgba(105, 79, 64, 0.12);
+  border-radius: 1rem;
+}
+
+.seo-prerender-shell h1,
+.seo-prerender-shell h2,
+.seo-prerender-shell h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+
+.seo-prerender-shell h1 {
+  max-width: 14ch;
+  margin: 0.5rem 0 1rem;
+  font-size: clamp(2.7rem, 7vw, 5.8rem);
+  line-height: 0.95;
+}
+
+.seo-prerender-shell h2 {
+  font-size: clamp(1.8rem, 3.2vw, 3rem);
+}
+
+.seo-prerender-shell p,
+.seo-prerender-shell li,
+.seo-prerender-shell address {
+  max-width: 68ch;
+  color: #655d56;
+  font-style: normal;
+  line-height: 1.7;
+}
+
+.seo-prerender-hero {
+  color: #ffffff;
+  background: linear-gradient(135deg, #0c1110, #1e2b28) !important;
+}
+
+.seo-prerender-hero p,
+.seo-prerender-hero a {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.seo-prerender-hero div,
+.seo-prerender-shell section:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.seo-prerender-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.seo-prerender-grid article {
+  padding: 1rem;
+  background: #f7f3ee;
+  border-radius: 0.75rem;
+}
+
+@media (max-width: 680px) {
+  .seo-prerender-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Search-friendly route pages */
+.seo-route-page {
+  min-height: 100svh;
+  color: #17120f;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(200, 174, 152, 0.2), transparent 28rem),
+    linear-gradient(180deg, #fbf8f4 0%, #eee7df 100%);
+  font-family: var(--font-elegant-ui);
+}
+
+.seo-route-main {
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 2.4rem);
+  width: min(1240px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: clamp(1.2rem, 4vw, 3.5rem) 0 clamp(3rem, 7vw, 6rem);
+}
+
+.seo-route-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  gap: clamp(1.5rem, 5vw, 5rem);
+  align-items: end;
+  padding: clamp(1.5rem, 5vw, 4rem);
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(200, 174, 152, 0.24), transparent 24rem),
+    linear-gradient(135deg, #0c1110, #1e2b28);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  box-shadow: 0 1.8rem 4rem rgba(50, 39, 31, 0.16);
+}
+
+.seo-route-hero .section-kicker {
+  color: #ead8c8;
+}
+
+.seo-route-hero h1 {
+  max-width: 13ch;
+  margin: 0.65rem 0 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.8rem, 6vw, 5.8rem);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 0.94;
+}
+
+.seo-route-hero > p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: clamp(0.98rem, 1.35vw, 1.1rem);
+  line-height: 1.75;
+}
+
+.seo-route-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0.35rem;
+}
+
+.seo-route-links a,
+.seo-location-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0.65rem 1rem;
+  color: #302721;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(143, 109, 90, 0.18);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  text-decoration: none;
+  transition: 180ms ease;
+}
+
+.seo-route-links a:hover,
+.seo-route-links a:focus-visible,
+.seo-location-links a:hover,
+.seo-location-links a:focus-visible {
+  color: #ffffff;
+  background: #172724;
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.seo-services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.seo-services-grid .service-card h2 {
+  margin: 0.75rem 0 0.35rem;
+  color: #111111;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.75rem, 2.4vw, 2.35rem);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.seo-route-cta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2rem;
+  align-items: center;
+  padding: clamp(1.4rem, 4vw, 2.8rem);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(143, 109, 90, 0.14);
+  border-radius: 1rem;
+}
+
+.seo-route-cta h2,
+.seo-location-card h2,
+.seo-info-grid h2 {
+  margin: 0.4rem 0 0.5rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.seo-route-cta p,
+.seo-location-card p,
+.seo-info-grid p {
+  margin-block: 0.3rem 0;
+  color: #6c625a;
+  line-height: 1.65;
+}
+
+.smoothing-route-hero h1 {
+  max-width: 11ch;
+}
+
+.smoothing-route-page .smoothing-service {
+  width: 100%;
+}
+
+.seo-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.seo-info-grid article {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(143, 109, 90, 0.14);
+  border-radius: 1rem;
+}
+
+.seo-info-grid article > span {
+  color: #a68465;
+  font-family: var(--font-catalogue);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.seo-info-grid h2 {
+  font-size: clamp(1.5rem, 2.3vw, 2.15rem);
+}
+
+.seo-location-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.7fr) minmax(0, 1.3fr);
+  min-height: 34rem;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(143, 109, 90, 0.14);
+  border-radius: 1.2rem;
+  box-shadow: 0 1.5rem 3.5rem rgba(54, 43, 34, 0.1);
+}
+
+.seo-location-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(1.5rem, 5vw, 4rem);
+}
+
+.seo-location-card .location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.7rem;
+}
+
+.seo-location-card .ghost-button {
+  color: #201a16;
+  border-color: rgba(32, 26, 22, 0.22);
+}
+
+.seo-location-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.4rem;
+}
+
+.seo-map-frame {
+  min-height: 34rem;
+  border-radius: 0;
+}
+
+@media (max-width: 820px) {
+  .seo-route-hero,
+  .seo-route-cta,
+  .seo-location-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seo-route-hero {
+    align-items: start;
+  }
+
+  .seo-services-grid,
+  .seo-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seo-route-cta .button {
+    width: 100%;
+  }
+
+  .seo-map-frame {
+    min-height: 26rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .seo-route-main {
+    width: min(100% - 1rem, 1240px);
+  }
+
+  .seo-route-hero {
+    padding: 1.35rem;
+    border-radius: 0.9rem;
+  }
+
+  .seo-route-hero h1 {
+    font-size: clamp(2.5rem, 13vw, 3.75rem);
+  }
+
+  .seo-page-header .store-back-link {
+    max-width: 10.5rem;
   }
 }

@@ -26,6 +26,10 @@ const credentialPatterns = [
     'Literal credential assignment',
     /(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd|access[_-]?token|auth[_-]?token)\s*[:=]\s*["'][^"'\r\n]{8,}["']/gi,
   ],
+  [
+    'Appointment dataset embedded in source code',
+    /(?:export\s+const\s+initialAppointments|["']sourceId["']\s*:\s*["']horas-\d{4}-)/g,
+  ],
 ]
 
 const trackedFiles = execFileSync('git', ['ls-files', '-z'], {
@@ -56,7 +60,7 @@ for (const file of trackedFiles) {
 }
 
 if (findings.length) {
-  console.error('Se detectaron posibles credenciales literales:')
+  console.error('Se detectaron posibles credenciales o datos privados versionados:')
   for (const finding of findings) {
     console.error(`- ${finding.file}:${finding.line} (${finding.label}) [REDACTED]`)
   }

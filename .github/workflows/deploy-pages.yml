@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Scan committed files for credentials
+      - name: Scan committed files for credentials and private datasets
         run: npm run security:secrets
 
       - name: Audit production dependencies

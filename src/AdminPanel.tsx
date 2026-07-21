@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { User } from 'firebase/auth'
 import {
-  ensureInitialAppointmentsSeeded,
   ensureInitialServicesSeeded,
   loginAdmin,
   logoutAdmin,
@@ -56,7 +55,6 @@ import InventoryPanel from './InventoryPanel'
 import AuditPanel from './AuditPanel'
 import AppointmentsPanel from './AppointmentsPanel'
 import HoursPanel from './HoursPanel'
-import { initialAppointments } from './initialAppointments'
 import { initialServiceCategories } from './servicesContent'
 import './AdminPanel.css'
 
@@ -945,9 +943,6 @@ export default function AdminPanel() {
 
   useEffect(() => {
     if (!user) return
-    void ensureInitialAppointmentsSeeded(initialAppointments).catch(() =>
-      setDataError('No fue posible cargar las horas iniciales. Intenta nuevamente.'),
-    )
     void ensureInitialServicesSeeded(initialServiceCategories).catch(() =>
       setDataError('No fue posible cargar los servicios iniciales. Intenta nuevamente.'),
     )
@@ -1058,7 +1053,7 @@ export default function AdminPanel() {
     }
   }, [user])
 
-  const visibleAppointments = appointments.length ? appointments : initialAppointments
+  const visibleAppointments = appointments
 
   const stats = useMemo(
     () => ({

@@ -1235,47 +1235,6 @@ export const importAppointments = async (appointments: AppointmentRecord[]) => {
   await auditBatch.commit()
 }
 
-export const ensureInitialAppointmentsSeeded = async (
-  appointments: AppointmentRecord[],
-) => {
-  const seedReference = doc(db, 'systemSeeds', 'hours2026')
-  const seedSnapshot = await getDoc(seedReference)
-  if (seedSnapshot.exists()) return
-
-  const batch = writeBatch(db)
-  appointments.forEach((appointment) => {
-    const reference = doc(db, 'appointments', appointment.sourceId)
-    batch.set(
-      reference,
-      {
-        ...cleanAppointment(appointment),
-        importedAt: serverTimestamp(),
-        sourceId: appointment.sourceId,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    )
-  })
-  batch.set(seedReference, {
-    key: 'hours2026',
-    records: appointments.length,
-    source: 'HORAS 2026.xlsx',
-    createdAt: serverTimestamp(),
-    ...actor(),
-  })
-  batch.set(
-    auditReference(),
-    auditData(
-      'appointment',
-      'hours2026',
-      'Carga inicial HORAS 2026',
-      'create',
-      [`${appointments.length} registros cargados automáticamente desde Excel`],
-    ),
-  )
-  await batch.commit()
-}
-
 export const ensureInitialServicesSeeded = async (
   categories: ServiceCategory[],
 ) => {

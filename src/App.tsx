@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -11,7 +11,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import './App.css'
-import AdminPanel from './AdminPanel'
 import {
   subscribeToNews,
   subscribeToProducts,
@@ -21,6 +20,7 @@ import {
 } from './firebase'
 import type { NewsItem, Product, ServiceCategory, ServiceItem } from './types'
 import ContentImage from './ContentImage'
+import { initialServiceCategories } from './servicesContent'
 
 import brazilianLogo from './assets/eef019e6-2c79-4ceb-ae07-f48716d5bb3f.png'
 import glattenLogo from './assets/glatten-professional-logo.png'
@@ -39,6 +39,8 @@ import trussLogo from './assets/TRUSS-Professional-Branco-opt.webp'
 import mariaJosePhoto from './assets/MARIAJOSE.jpeg'
 import moiraPhoto from './assets/MOIRA.jpeg'
 import claudiaPhoto from './assets/CLAUDIA.jpeg'
+
+const AdminPanel = lazy(() => import('./AdminPanel'))
 
 const whatsappNumber = '56986327850'
 const instagramUrl = 'https://www.instagram.com/susanariquelmepeluqueria/'
@@ -217,6 +219,57 @@ const buildServiceGroups = (
         .filter((item) => item.active && item.categoryId === category.id)
         .sort((first, second) => first.order - second.order),
     }))
+
+const useServiceGroups = () => {
+  const [categories, setCategories] = useState<ServiceCategory[]>([])
+  const [items, setItems] = useState<ServiceItem[]>([])
+
+  const liveGroups = useMemo(
+    () => buildServiceGroups(categories, items),
+    [categories, items],
+  )
+
+  useEffect(() => {
+    const unsubscribeCategories = subscribeToServiceCategories(setCategories)
+    const unsubscribeItems = subscribeToServiceItems(setItems)
+
+    return () => {
+      unsubscribeCategories()
+      unsubscribeItems()
+    }
+  }, [])
+
+  return liveGroups.some((group) => group.items.length)
+    ? liveGroups
+    : initialServiceCategories
+}
+
+type PageMetadata = {
+  title: string
+  description: string
+  canonicalPath: string
+}
+
+const usePageMetadata = ({ title, description, canonicalPath }: PageMetadata) => {
+  useEffect(() => {
+    const canonicalUrl = `https://susanariquelmepeluqueria.cl${canonicalPath}`
+    document.title = title
+
+    const updateMeta = (selector: string, content: string) => {
+      document.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', content)
+    }
+
+    updateMeta('meta[name="description"]', description)
+    updateMeta('meta[property="og:title"]', title)
+    updateMeta('meta[property="og:description"]', description)
+    updateMeta('meta[property="og:url"]', canonicalUrl)
+    updateMeta('meta[name="twitter:title"]', title)
+    updateMeta('meta[name="twitter:description"]', description)
+    document
+      .querySelector<HTMLLinkElement>('link[rel="canonical"]')
+      ?.setAttribute('href', canonicalUrl)
+  }, [canonicalPath, description, title])
+}
 
 const getServiceSectionId = (title: string) =>
   `servicio-${normalizeSearchText(title)
@@ -472,6 +525,12 @@ function SocialIcon({ icon }: { icon: string }) {
 }
 
 function Landing() {
+  usePageMetadata({
+    title: 'Peluquería y Colorimetría en Concepción | Susana Riquelme',
+    description:
+      'Peluquería en Concepción especializada en colorimetría, rubios, alisados, tratamientos capilares, cortes y asesoría personalizada.',
+    canonicalPath: '/',
+  })
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -502,9 +561,12 @@ function Landing() {
     () => managedNews.filter((item) => item.active),
     [managedNews],
   )
-  const serviceGroups = useMemo(() => {
+  const liveServiceGroups = useMemo(() => {
     return buildServiceGroups(managedServiceCategories, managedServiceItems)
   }, [managedServiceCategories, managedServiceItems])
+  const serviceGroups = liveServiceGroups.some((group) => group.items.length)
+    ? liveServiceGroups
+    : initialServiceCategories
   const serviceOptions = useMemo(
     () =>
       serviceGroups.flatMap((group) =>
@@ -699,7 +761,7 @@ function Landing() {
       <header className={`site-header ${isMenuOpen ? 'is-menu-open' : ''}`}>
         <a
           className="brand"
-          href="#inicio"
+          href="/"
           aria-label="Ir al inicio"
           onClick={() => setIsMenuOpen(false)}
         >
@@ -723,14 +785,14 @@ function Landing() {
         </button>
 
         <nav className="site-nav" aria-label="Navegacion principal">
-          <a href="#equipo" onClick={() => setIsMenuOpen(false)}>Nuestro Equipo</a>
-          <a href="#servicios" onClick={() => setIsMenuOpen(false)}>Servicios</a>
-          <a href="#productos" onClick={() => setIsMenuOpen(false)}>Productos</a>
-          <a href="#alianzas" onClick={() => setIsMenuOpen(false)}>Alianzas</a>
+          <a href="/#equipo" onClick={() => setIsMenuOpen(false)}>Nuestro Equipo</a>
+          <a href="/servicios/" onClick={() => setIsMenuOpen(false)}>Servicios</a>
+          <a href="/productos/" onClick={() => setIsMenuOpen(false)}>Productos</a>
+          <a href="/#alianzas" onClick={() => setIsMenuOpen(false)}>Alianzas</a>
           {newsItems.length ? (
-            <a href="#novedades" onClick={() => setIsMenuOpen(false)}>Novedades</a>
+            <a href="/#novedades" onClick={() => setIsMenuOpen(false)}>Novedades</a>
           ) : null}
-          <a href="#ubicacion" onClick={() => setIsMenuOpen(false)}>Ubicacion</a>
+          <a href="/ubicacion/" onClick={() => setIsMenuOpen(false)}>Ubicacion</a>
         </nav>
 
         <button
@@ -773,7 +835,7 @@ function Landing() {
               >
                 Reservar hora
               </button>
-              <a className="button ghost-button" href="#productos">
+              <a className="button ghost-button" href="/productos/">
                 Ver productos
               </a>
             </div>
@@ -924,7 +986,14 @@ function Landing() {
               <span>Explorar</span>
               <div>
                 {serviceGroups.map((group) => (
-                  <a href={`#${getServiceSectionId(group.title)}`} key={group.title}>
+                  <a
+                    href={
+                      isSmoothingService(group.title)
+                        ? '/servicios/alisado/'
+                        : `#${getServiceSectionId(group.title)}`
+                    }
+                    key={group.title}
+                  >
                     {group.title}
                   </a>
                 ))}
@@ -992,7 +1061,7 @@ function Landing() {
                   <p className="section-kicker">Tienda profesional</p>
                   <h2>El cuidado del salón, también en casa.</h2>
                 </div>
-                <a className="products-view-all" href="#tienda">
+                <a className="products-view-all" href="/productos/">
                   Ver todo
                 </a>
               </div>
@@ -1702,7 +1771,260 @@ function Landing() {
   )
 }
 
+function RoutePageHeader({ backLabel = 'Volver al inicio', backHref = '/' }) {
+  return (
+    <header className="store-header seo-page-header">
+      <a className="store-brand" href="/" aria-label="Ir al inicio">
+        <img className="store-brand-logo" src={srLogoBlack} alt="" />
+      </a>
+      <a className="store-back-link" href={backHref}>
+        <ArrowLeft size={15} strokeWidth={1.9} aria-hidden="true" />
+        {backLabel}
+      </a>
+    </header>
+  )
+}
+
+const openRouteBooking = (service?: string) => {
+  trackSiteEvent('booking_open', { itemName: service || 'Reserva general' })
+  window.open(
+    whatsappHref(
+      service
+        ? `Hola Susana Riquelme Peluquería, quiero consultar y reservar: ${service}.`
+        : 'Hola Susana Riquelme Peluquería, quiero reservar una hora.',
+    ),
+    '_blank',
+    'noopener,noreferrer',
+  )
+}
+
+function ServicesRoutePage() {
+  usePageMetadata({
+    title: 'Servicios de Peluquería en Concepción | Susana Riquelme',
+    description:
+      'Conoce nuestros servicios de peluquería en Concepción: colorimetría, alisados, cortes, peinados y tratamientos capilares con asesoría profesional.',
+    canonicalPath: '/servicios/',
+  })
+  const serviceGroups = useServiceGroups()
+
+  return (
+    <div className="seo-route-page">
+      <RoutePageHeader />
+      <main className="seo-route-main">
+        <section className="seo-route-hero">
+          <div>
+            <p className="section-kicker">Servicios de peluquería en Concepción</p>
+            <h1>Cuidado capilar, color y estilo con asesoría personalizada.</h1>
+          </div>
+          <p>
+            Explora valores referenciales y elige una categoría. Antes de cada
+            servicio evaluamos el estado, largo y cantidad de cabello para recomendar
+            una alternativa segura y coherente con el resultado que buscas.
+          </p>
+        </section>
+
+        <nav className="seo-route-links" aria-label="Categorías de servicios">
+          {serviceGroups.map((group) => (
+            <a
+              href={
+                isSmoothingService(group.title)
+                  ? '/servicios/alisado/'
+                  : `#${getServiceSectionId(group.title)}`
+              }
+              key={group.title}
+            >
+              {group.title}
+            </a>
+          ))}
+        </nav>
+
+        <div className="seo-services-grid">
+          {serviceGroups.map((group, groupIndex) =>
+            isSmoothingService(group.title) ? (
+              <SmoothingServiceCard
+                group={group}
+                onBook={openRouteBooking}
+                key={group.title}
+              />
+            ) : (
+              <section
+                className="service-block service-card"
+                id={getServiceSectionId(group.title)}
+                key={group.title}
+              >
+                <div className="service-card-topline">
+                  <div className="service-block-head">
+                    <span>{group.kicker}</span>
+                    <small>{group.accent}</small>
+                  </div>
+                  <span className="service-card-number">
+                    {String(groupIndex + 1).padStart(2, '0')}
+                  </span>
+                </div>
+                <h2>{group.title}</h2>
+                <p className="service-note">{group.note}</p>
+                <ul>
+                  {group.items.map((item) => (
+                    <li key={item.name}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openRouteBooking(
+                            `${group.title} - ${item.name} (${item.price})`,
+                          )
+                        }
+                        aria-label={`Reservar ${item.name}, ${item.price}`}
+                      >
+                        <span className="service-item-name">{item.name}</span>
+                        <span className="service-leader" aria-hidden="true" />
+                        <strong>{item.price}</strong>
+                        <ArrowUpRight aria-hidden="true" size={17} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {group.disclaimer ? (
+                  <p className="service-disclaimer">{group.disclaimer}</p>
+                ) : null}
+              </section>
+            ),
+          )}
+        </div>
+
+        <section className="seo-route-cta">
+          <div>
+            <p className="section-kicker">Evaluación profesional</p>
+            <h2>¿No sabes qué servicio elegir?</h2>
+            <p>
+              Cuéntanos qué resultado buscas y te orientaremos antes de confirmar tu hora.
+            </p>
+          </div>
+          <button className="button primary-button" type="button" onClick={() => openRouteBooking()}>
+            Consultar por WhatsApp
+          </button>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+function SmoothingRoutePage() {
+  usePageMetadata({
+    title: 'Alisado de Cabello en Concepción | Susana Riquelme',
+    description:
+      'Alisado de cabello en Concepción con evaluación profesional según largo, cantidad y estado del cabello. Incluye fluido antihumedad.',
+    canonicalPath: '/servicios/alisado/',
+  })
+  const serviceGroups = useServiceGroups()
+  const smoothingGroup =
+    serviceGroups.find((group) => isSmoothingService(group.title)) ||
+    initialServiceCategories.find((group) => isSmoothingService(group.title))
+
+  return (
+    <div className="seo-route-page smoothing-route-page">
+      <RoutePageHeader backLabel="Ver todos los servicios" backHref="/servicios/" />
+      <main className="seo-route-main">
+        <section className="seo-route-hero smoothing-route-hero">
+          <div>
+            <p className="section-kicker">Disciplina y control del frizz</p>
+            <h1>Alisado de cabello en Concepción.</h1>
+          </div>
+          <p>
+            El valor se define según el largo y la cantidad de cabello. Realizamos una
+            evaluación previa para cuidar la fibra capilar y confirmar el procedimiento
+            más adecuado para ti.
+          </p>
+        </section>
+
+        {smoothingGroup ? (
+          <SmoothingServiceCard group={smoothingGroup} onBook={openRouteBooking} />
+        ) : null}
+
+        <section className="seo-info-grid" aria-label="Información sobre el alisado">
+          <article>
+            <span>01</span>
+            <h2>Evaluación personalizada</h2>
+            <p>Revisamos estado, densidad, historial químico y resultado esperado.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h2>Control de humedad</h2>
+            <p>El servicio incluye fluido antihumedad para apoyar el acabado final.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h2>Mantención en casa</h2>
+            <p>Te orientamos sobre lavado y productos para prolongar el resultado.</p>
+          </article>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+function LocationRoutePage() {
+  usePageMetadata({
+    title: 'Peluquería en Caupolicán 246, Concepción | Susana Riquelme',
+    description:
+      'Visita Susana Riquelme Peluquería en Caupolicán 246, departamento 101, Concepción. Reserva tu atención o consulta por WhatsApp.',
+    canonicalPath: '/ubicacion/',
+  })
+
+  return (
+    <div className="seo-route-page location-route-page">
+      <RoutePageHeader />
+      <main className="seo-route-main">
+        <section className="seo-route-hero">
+          <div>
+            <p className="section-kicker">Ubicación y contacto</p>
+            <h1>Peluquería en el centro de Concepción.</h1>
+          </div>
+          <p>
+            Nos encuentras en Caupolicán 246, departamento 101, entre Cochrane y
+            San Martín. La atención se coordina previamente para dedicar el tiempo
+            necesario a cada diagnóstico y servicio.
+          </p>
+        </section>
+
+        <section className="seo-location-grid">
+          <div className="seo-location-card">
+            <p className="section-kicker">Susana Riquelme Peluquería</p>
+            <h2>Caupolicán 246, departamento 101.</h2>
+            <p>Concepción, Región del Biobío, Chile.</p>
+            <div className="location-actions">
+              <button className="button primary-button" type="button" onClick={() => openRouteBooking()}>
+                Reservar por WhatsApp
+              </button>
+              <a className="button ghost-button" href={instagramUrl} target="_blank" rel="noreferrer">
+                Ver Instagram
+              </a>
+            </div>
+            <nav className="seo-location-links" aria-label="Explorar el sitio">
+              <a href="/servicios/">Ver servicios</a>
+              <a href="/productos/">Ver productos</a>
+            </nav>
+          </div>
+          <div className="map-frame seo-map-frame">
+            <iframe
+              title="Mapa de Susana Riquelme Peluquería en Concepción"
+              src={mapSrc}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
 function ProductsStorePage() {
+  usePageMetadata({
+    title: 'Productos Profesionales para el Cabello | Susana Riquelme',
+    description:
+      'Productos profesionales para cuidar tu cabello en casa. Consulta disponibilidad y recibe asesoría en Susana Riquelme Peluquería, Concepción.',
+    canonicalPath: '/productos/',
+  })
   const [managedProducts, setManagedProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [productQuery, setProductQuery] = useState('')
@@ -1797,10 +2119,10 @@ function ProductsStorePage() {
   return (
     <div className="store-page">
       <header className="store-header">
-        <a className="store-brand" href="#inicio" aria-label="Volver a la landing">
+        <a className="store-brand" href="/" aria-label="Volver al inicio">
           <img className="store-brand-logo" src={srLogoBlack} alt="" />
         </a>
-        <a className="store-back-link" href="#inicio">
+        <a className="store-back-link" href="/">
           <ArrowLeft size={15} strokeWidth={1.9} aria-hidden="true" />
           Volver
         </a>
@@ -2958,6 +3280,7 @@ function PrivacyPolicyPage() {
 
 function App() {
   const [currentHash, setCurrentHash] = useState(() => window.location.hash)
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/'
 
   useEffect(() => {
     const handleHashChange = () => setCurrentHash(window.location.hash)
@@ -2965,11 +3288,22 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  if (currentHash === '#admin') return <AdminPanel />
-  if (currentHash === '#tienda') return <ProductsStorePage />
+  if (currentHash === '#admin') {
+    return (
+      <Suspense fallback={<div className="admin-loading">Cargando panel…</div>}>
+        <AdminPanel />
+      </Suspense>
+    )
+  }
   if (currentHash === '#terminos') return <TermsPage />
   if (currentHash === '#devoluciones') return <RefundPolicyPage />
   if (currentHash === '#privacidad') return <PrivacyPolicyPage />
+  if (currentPath === '/servicios/alisado') return <SmoothingRoutePage />
+  if (currentPath === '/servicios') return <ServicesRoutePage />
+  if (currentPath === '/productos' || currentHash === '#tienda') {
+    return <ProductsStorePage />
+  }
+  if (currentPath === '/ubicacion') return <LocationRoutePage />
 
   return <Landing />
 }

@@ -31,6 +31,9 @@ falla y no sube una versión rota.
   servicio, claves privadas ni credenciales de servidor.
 - El workflow ejecuta una búsqueda de credenciales literales y una auditoría de
   dependencias antes de compilar. Si cualquiera falla, GitHub Pages no se publica.
+- Los registros de clientas, horas, pagos o fichas de atención nunca deben vivir
+  dentro de `src/`, `public/` ni archivos versionados. El panel consulta estos datos
+  exclusivamente desde Firestore después de autenticar a una cuenta administradora.
 - La protección real de Firestore está en `firestore.rules`: solo una cuenta
   autenticada y registrada en `admins/{uid}` puede escribir datos.
 - Restringir la API key de Firebase en Google Cloud Console por HTTP referrers:
