@@ -89,6 +89,37 @@
   opacity: 0.58;
 }
 
+/* Finance hero actions use distinct, high-contrast colors on the dark header. */
+.admin-shell .finance-hero-actions .admin-ui-button.finance-service-cta {
+  color: #fff;
+  background: #a45135;
+  border-color: #a45135;
+  box-shadow: 0 0.35rem 1rem rgba(164, 81, 53, 0.3);
+}
+
+.admin-shell .finance-hero-actions .admin-ui-button.finance-service-cta:hover:not(:disabled) {
+  color: #fff;
+  background: #873f29;
+  border-color: #c87454;
+}
+
+.admin-shell .finance-hero-actions .admin-ui-button.finance-stylist-cta {
+  color: #231b12;
+  background: #e7b85a;
+  border-color: #e7b85a;
+  box-shadow: 0 0.35rem 1rem rgba(231, 184, 90, 0.25);
+}
+
+.admin-shell .finance-hero-actions .admin-ui-button.finance-stylist-cta:hover:not(:disabled) {
+  color: #17120c;
+  background: #f2ca79;
+  border-color: #f6d997;
+}
+
+.admin-shell .finance-hero-actions :is(.finance-service-cta, .finance-stylist-cta) span {
+  color: inherit;
+}
+
 .admin-ui-spinner {
   animation: admin-spin 0.8s linear infinite;
 }

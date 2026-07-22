@@ -1039,6 +1039,7 @@ export default function AppointmentsPanel({
         <div className="finance-hero-actions">
           <AdminButton
             variant="primary"
+            className="finance-service-cta"
             icon={Plus}
             type="button"
             onClick={() => setDraft(emptyAppointment())}
@@ -1046,6 +1047,7 @@ export default function AppointmentsPanel({
             Registrar servicio
           </AdminButton>
           <AdminButton
+            className="finance-stylist-cta"
             icon={UserPlus}
             type="button"
             onClick={() => setStylistDraft(emptyStylist())}
