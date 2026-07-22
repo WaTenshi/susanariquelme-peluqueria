@@ -722,7 +722,7 @@ export default function HoursPanel({
             sin separar la ficha de la clienta de la información financiera.
           </span>
         </div>
-        <button className="admin-primary-button" type="button" onClick={startNew}>
+        <button className="admin-primary-button hours-register-cta" type="button" onClick={startNew}>
           <CalendarPlus size={18} aria-hidden="true" />
           Registrar hora
         </button>
@@ -800,7 +800,7 @@ export default function HoursPanel({
             <p>Listado de horas</p>
             <h2>{visibleBookings.length} reservas visibles</h2>
           </div>
-          <button className="admin-secondary-button" type="button" onClick={startNew}>
+          <button className="admin-secondary-button hours-register-cta" type="button" onClick={startNew}>
             <CalendarPlus size={16} aria-hidden="true" />
             Registrar hora
           </button>
