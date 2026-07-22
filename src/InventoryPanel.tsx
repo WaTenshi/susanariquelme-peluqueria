@@ -1,5 +1,17 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import {
+  Archive,
+  ContactRound,
+  Files,
+  LayoutGrid,
+  PackagePlus,
+  Pencil,
+  ReceiptText,
+  Search,
+  ShoppingCart,
+  Truck,
+} from 'lucide-react'
+import {
   adjustInventory,
   removeInventorySupplier,
   registerProductSale,
@@ -24,6 +36,8 @@ import type {
   ProductSale,
   Stylist,
 } from './types'
+import { AdminButton } from './admin-ui'
+import { useAdminConfirm } from './admin-confirm'
 
 const IVA_RATE = 0.19
 
@@ -237,6 +251,7 @@ export default function InventoryPanel({
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState('')
+  const { confirm, confirmDialog } = useAdminConfirm()
 
   const inventoryMap = useMemo(
     () => new Map(inventory.map((item) => [item.productId, item])),
@@ -1297,6 +1312,7 @@ export default function InventoryPanel({
 
   return (
     <div className="inventory-view">
+      {confirmDialog}
       <div className="inventory-summary">
         <article><span>Productos</span><strong>{products.length}</strong></article>
         <article className={lowStockCount ? 'has-warning' : ''}>
@@ -1309,25 +1325,25 @@ export default function InventoryPanel({
           <span>Proveedores activos</span><strong>{activeSuppliers.length}</strong>
         </article>
         <div className="inventory-main-actions">
-          <button className="admin-primary-button" type="button" onClick={onAddProduct}>
+          <AdminButton variant="primary" icon={PackagePlus} type="button" onClick={onAddProduct}>
             Agregar producto
-          </button>
-          <button
-            className="admin-secondary-button"
+          </AdminButton>
+          <AdminButton
+            icon={ReceiptText}
             type="button"
             onClick={() => setScreen('invoice')}
           >
             Añadir factura
-          </button>
-          <button
-            className="admin-secondary-button"
+          </AdminButton>
+          <AdminButton
+            icon={ShoppingCart}
             type="button"
             onClick={() => setScreen('sale')}
           >
             Registrar venta
-          </button>
-          <button
-            className="admin-secondary-button"
+          </AdminButton>
+          <AdminButton
+            icon={Truck}
             type="button"
             onClick={() => {
               setView('suppliers')
@@ -1335,36 +1351,40 @@ export default function InventoryPanel({
             }}
           >
             Agregar proveedor
-          </button>
+          </AdminButton>
         </div>
       </div>
 
       <section className="admin-content-card">
         <div className="inventory-toolbar">
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={
-              view === 'general'
-                ? 'Buscar producto o SKU'
-                : view === 'invoices'
-                  ? 'Buscar factura, proveedor, SKU o producto'
-                  : 'Buscar proveedor, RUT o contacto'
-            }
-          />
+          <span className="admin-search-control">
+            <Search size={19} aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={
+                view === 'general'
+                  ? 'Buscar producto o SKU'
+                  : view === 'invoices'
+                    ? 'Buscar factura, proveedor, SKU o producto'
+                    : 'Buscar proveedor, RUT o contacto'
+              }
+            />
+          </span>
           <div>
             {([
-              ['general', 'Vista general'],
-              ['invoices', 'Por factura'],
-              ['suppliers', 'Proveedores'],
-            ] as const).map(([value, label]) => (
+              ['general', 'Vista general', LayoutGrid],
+              ['invoices', 'Por factura', Files],
+              ['suppliers', 'Proveedores', ContactRound],
+            ] as const).map(([value, label, ViewIcon]) => (
               <button
                 className={view === value ? 'is-active' : ''}
                 type="button"
                 onClick={() => setView(value)}
                 key={value}
               >
+                <ViewIcon size={17} aria-hidden="true" />
                 {label}
               </button>
             ))}
@@ -1534,17 +1554,20 @@ export default function InventoryPanel({
                 <p>{supplier.notes || supplier.address || 'Sin notas registradas.'}</p>
                 <div className="admin-row-actions">
                   <button type="button" onClick={() => setSupplierDraft(supplier)}>
-                    Editar
+                    <Pencil size={17} aria-hidden="true" /> Editar
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (window.confirm(`¿Archivar proveedor "${supplier.name}"?`)) {
-                        void removeInventorySupplier(supplier)
-                      }
+                    onClick={async () => {
+                      const accepted = await confirm({
+                        title: `Archivar proveedor ${supplier.name}`,
+                        description: 'El proveedor dejará de aparecer entre las opciones activas, pero sus facturas se conservarán.',
+                        confirmLabel: 'Archivar proveedor',
+                      })
+                      if (accepted) void removeInventorySupplier(supplier)
                     }}
                   >
-                    Archivar
+                    <Archive size={17} aria-hidden="true" /> Archivar
                   </button>
                 </div>
               </article>

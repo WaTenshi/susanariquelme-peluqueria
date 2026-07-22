@@ -1,5 +1,17 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import {
+  Archive,
+  CalendarDays,
+  ChartNoAxesCombined,
+  ListChecks,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UserPlus,
+  UsersRound,
+} from 'lucide-react'
+import {
   removeAppointment,
   removeStylist,
   saveAppointment,
@@ -13,6 +25,8 @@ import type {
   Stylist,
   StylistPaymentFrequency,
 } from './types'
+import { AdminButton } from './admin-ui'
+import { useAdminConfirm } from './admin-confirm'
 
 type AppointmentsPanelProps = {
   appointments: AppointmentRecord[]
@@ -550,6 +564,7 @@ export default function AppointmentsPanel({
   const [selectedYear, setSelectedYear] = useState(
     new Date().getFullYear().toString(),
   )
+  const { confirm, confirmDialog } = useAdminConfirm()
 
   const stylistOptions = useMemo(() => {
     const options = new Map<string, StylistOption>()
@@ -1012,6 +1027,7 @@ export default function AppointmentsPanel({
 
   return (
     <div className="finance-view">
+      {confirmDialog}
       <section className="finance-hero">
         <div>
           <p>Finanzas</p>
@@ -1021,30 +1037,34 @@ export default function AppointmentsPanel({
           </span>
         </div>
         <div className="finance-hero-actions">
-          <button
-            className="admin-primary-button"
+          <AdminButton
+            variant="primary"
+            icon={Plus}
             type="button"
             onClick={() => setDraft(emptyAppointment())}
           >
             Registrar servicio
-          </button>
-          <button
-            className="admin-secondary-button"
+          </AdminButton>
+          <AdminButton
+            icon={UserPlus}
             type="button"
             onClick={() => setStylistDraft(emptyStylist())}
           >
             Nueva estilista
-          </button>
+          </AdminButton>
         </div>
       </section>
 
       <div className="finance-toolbar">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar clienta, servicio, producto, estilista o boleta"
-        />
+        <span className="admin-search-control">
+          <Search size={19} aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar clienta, servicio, producto, estilista o boleta"
+          />
+        </span>
         <select value={month} onChange={(event) => setMonth(event.target.value)}>
           {monthOptions.map((item) => (
             <option value={item} key={item}>{monthLabel(item)}</option>
@@ -1052,17 +1072,18 @@ export default function AppointmentsPanel({
         </select>
         <div className="finance-view-toggle">
           {([
-            ['summary', 'Resumen'],
-            ['stylists', 'Estilistas'],
-            ['calendar', 'Calendario'],
-            ['records', 'Registros'],
-          ] as const).map(([value, label]) => (
+            ['summary', 'Resumen', ChartNoAxesCombined],
+            ['stylists', 'Estilistas', UsersRound],
+            ['calendar', 'Calendario', CalendarDays],
+            ['records', 'Registros', ListChecks],
+          ] as const).map(([value, label, ViewIcon]) => (
             <button
               className={view === value ? 'is-active' : ''}
               type="button"
               onClick={() => setView(value)}
               key={value}
             >
+              <ViewIcon size={17} aria-hidden="true" />
               {label}
             </button>
           ))}
@@ -1163,23 +1184,24 @@ export default function AppointmentsPanel({
                         if (original) setStylistDraft(original)
                       }}
                     >
-                      Editar
+                      <Pencil size={17} aria-hidden="true" /> Editar
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         const original = stylists.find(
                           (stylist) => normalizeName(stylist.name) === item.option.key,
                         )
-                        if (
-                          original &&
-                          window.confirm(`Archivar ficha de ${original.name}?`)
-                        ) {
-                          void removeStylist(original)
-                        }
+                        if (!original) return
+                        const accepted = await confirm({
+                          title: `Archivar ficha de ${original.name}`,
+                          description: 'La estilista dejará de aparecer entre las opciones activas, pero sus registros se conservarán.',
+                          confirmLabel: 'Archivar ficha',
+                        })
+                        if (accepted) void removeStylist(original)
                       }}
                     >
-                      Archivar
+                      <Archive size={17} aria-hidden="true" /> Archivar
                     </button>
                   </div>
                 ) : null}
@@ -1255,18 +1277,21 @@ export default function AppointmentsPanel({
                       <div className="admin-row-actions">
                         {hasService ? (
                           <button type="button" onClick={() => setDraft(appointment)}>
-                            Editar
+                            <Pencil size={17} aria-hidden="true" /> Editar
                           </button>
                         ) : null}
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm('Eliminar este movimiento financiero?')) {
-                              void removeAppointment(appointment)
-                            }
+                          onClick={async () => {
+                            const accepted = await confirm({
+                              title: 'Eliminar movimiento financiero',
+                              description: `Se eliminará el registro asociado a ${appointment.clientName || appointment.productClientName || 'esta clienta'}.`,
+                              confirmLabel: 'Eliminar movimiento',
+                            })
+                            if (accepted) void removeAppointment(appointment)
                           }}
                         >
-                          Eliminar
+                          <Trash2 size={17} aria-hidden="true" /> Eliminar
                         </button>
                       </div>
                     </article>

@@ -1,7 +1,18 @@
 import { useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
+import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  Check,
+  RotateCcw,
+  Search,
+  Star,
+  UserPlus,
+  UsersRound,
+} from 'lucide-react'
 import { saveClient } from './firebase'
 import type { Client, ClientVisit } from './types'
+import { AdminButton, AdminModal } from './admin-ui'
+import { useAdminFormGuard } from './admin-form-guard'
 
 type ClientFilter = 'all' | 'vip' | 'recent' | 'oldest'
 
@@ -113,6 +124,7 @@ export default function ClientPickerModal({
   const [draft, setDraft] = useState<Client | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const { requestClose, unsavedDialog } = useAdminFormGuard(draft, onClose)
 
   const lastVisitByClient = useMemo(() => {
     const dates = new Map<string, number>()
@@ -204,46 +216,44 @@ export default function ClientPickerModal({
     setError('')
   }
 
-  const modal = (
-    <div className="inventory-modal-backdrop">
-      <div
-        className="inventory-modal client-picker-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
+  return (
+    <>
+      {unsavedDialog}
+      <AdminModal
+        open
+        eyebrow={eyebrow}
+        title={draft ? 'Nueva clienta' : title}
+        description={draft ? 'Completa los datos principales para crear y seleccionar la ficha.' : 'Busca por nombre, teléfono, correo o comuna.'}
+        onClose={() => void requestClose()}
+        size="large"
+        className="client-picker-modal"
       >
-        <div className="admin-editor-head">
-          <div>
-            <p>{eyebrow}</p>
-            <h2>{draft ? 'Nueva clienta' : title}</h2>
-          </div>
-          <button className="admin-text-button" type="button" onClick={onClose}>
-            Cerrar
-          </button>
-        </div>
-
         <div className="client-picker-layout">
           <aside className="client-picker-sidebar">
             <div>
-              <p>Clientas registradas</p>
+              <p><UsersRound size={17} aria-hidden="true" /> Clientas registradas</p>
               <strong>{clients.length}</strong>
             </div>
             <label className="clients-search">
               <span>Buscar clienta</span>
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Nombre, teléfono, correo o comuna"
-              />
+              <span className="admin-search-control">
+                <Search size={19} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Nombre, teléfono, correo o comuna"
+                  autoFocus
+                />
+              </span>
             </label>
             <div className="clients-filters" aria-label="Filtros de clientas">
               {([
-                ['all', 'Todas'],
-                ['vip', 'VIP'],
-                ['recent', 'Más recientes'],
-                ['oldest', 'Menos recientes'],
-              ] as const).map(([value, label]) => (
+                ['all', 'Todas', UsersRound],
+                ['vip', 'VIP', Star],
+                ['recent', 'Más recientes', ArrowDownAZ],
+                ['oldest', 'Menos recientes', ArrowUpAZ],
+              ] as const).map(([value, label, FilterIcon]) => (
                 <button
                   className={filter === value ? 'is-active' : ''}
                   type="button"
@@ -253,21 +263,23 @@ export default function ClientPickerModal({
                   }}
                   key={value}
                 >
+                  <FilterIcon size={16} aria-hidden="true" />
                   {label}
                 </button>
               ))}
             </div>
             <div className="client-picker-sidebar-actions">
-              <button
-                className="admin-primary-button"
+              <AdminButton
+                variant="primary"
+                icon={UserPlus}
                 type="button"
                 onClick={startDraft}
               >
                 Nueva clienta
-              </button>
+              </AdminButton>
               {onClear ? (
-                <button
-                  className="admin-secondary-button"
+                <AdminButton
+                  icon={RotateCcw}
                   type="button"
                   onClick={() => {
                     onClear()
@@ -275,7 +287,7 @@ export default function ClientPickerModal({
                   }}
                 >
                   Limpiar selección
-                </button>
+                </AdminButton>
               ) : null}
             </div>
           </aside>
@@ -288,13 +300,12 @@ export default function ClientPickerModal({
                     <p>Ficha rápida</p>
                     <strong>{draft.firstName || 'Nueva clienta'}</strong>
                   </div>
-                  <button
-                    className="admin-text-button"
+                  <AdminButton
                     type="button"
                     onClick={() => setDraft(null)}
                   >
                     Volver al listado
-                  </button>
+                  </AdminButton>
                 </div>
                 <div className="admin-form-grid">
                   <label>
@@ -396,21 +407,22 @@ export default function ClientPickerModal({
                 </div>
                 {error ? <p className="admin-error">{error}</p> : null}
                 <div className="admin-form-actions">
-                  <button
-                    className="admin-secondary-button"
+                  <AdminButton
                     type="button"
                     onClick={() => setDraft(null)}
                   >
                     Cancelar
-                  </button>
-                  <button
-                    className="admin-primary-button"
+                  </AdminButton>
+                  <AdminButton
+                    variant="primary"
+                    icon={UserPlus}
                     type="button"
                     disabled={isSaving || !draft.firstName.trim()}
+                    isLoading={isSaving}
                     onClick={() => void handleCreate()}
                   >
-                    {isSaving ? 'Guardando...' : 'Crear y seleccionar'}
-                  </button>
+                    Crear y seleccionar
+                  </AdminButton>
                 </div>
               </div>
             ) : (
@@ -454,20 +466,24 @@ export default function ClientPickerModal({
                             </small>
                           ) : null}
                         </div>
-                        {client.vip ? <i>VIP</i> : null}
+                        <span className="client-picker-row-status">
+                          {client.vip ? <i>VIP</i> : null}
+                          {isSelected ? <Check size={19} aria-label="Seleccionada" /> : null}
+                        </span>
                       </button>
                     )
                   })}
                   {!filteredClients.length ? (
                     <div className="client-picker-empty">
                       <p className="admin-empty-copy">No hay coincidencias.</p>
-                      <button
-                        className="admin-primary-button"
+                      <AdminButton
+                        variant="primary"
+                        icon={UserPlus}
                         type="button"
                         onClick={startDraft}
                       >
                         Crear clienta
-                      </button>
+                      </AdminButton>
                     </div>
                   ) : null}
                 </div>
@@ -475,9 +491,7 @@ export default function ClientPickerModal({
             )}
           </section>
         </div>
-      </div>
-    </div>
+      </AdminModal>
+    </>
   )
-
-  return createPortal(modal, document.body)
 }

@@ -1,5 +1,27 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { User } from 'firebase/auth'
+import {
+  Activity,
+  CalendarCheck2,
+  CheckCircle2,
+  CircleDollarSign,
+  ExternalLink,
+  FolderPlus,
+  ImagePlus,
+  LogOut,
+  Menu,
+  Newspaper,
+  PackageSearch,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Pencil,
+  Plus,
+  Save,
+  Scissors,
+  Trash2,
+  UsersRound,
+  X,
+} from 'lucide-react'
 import {
   ensureInitialServicesSeeded,
   loginAdmin,
@@ -56,17 +78,21 @@ import AuditPanel from './AuditPanel'
 import AppointmentsPanel from './AppointmentsPanel'
 import HoursPanel from './HoursPanel'
 import { initialServiceCategories } from './servicesContent'
+import {
+  AdminButton,
+  CatalogPriceInput,
+  AdminField,
+  CurrencyInput,
+} from './admin-ui'
+import {
+  adminNavigation,
+  getAdminNavigationItem,
+  type AdminTab,
+} from './admin-navigation'
+import { useAdminConfirm } from './admin-confirm'
+import { useAdminFormGuard } from './admin-form-guard'
 import './AdminPanel.css'
-
-type AdminTab =
-  | 'overview'
-  | 'hours'
-  | 'appointments'
-  | 'clients'
-  | 'services'
-  | 'inventory'
-  | 'news'
-  | 'audit'
+import './AdminUI.css'
 
 const emptyProduct = (order = 1): Product => ({
   brand: '',
@@ -160,27 +186,6 @@ const countBy = (events: SiteEvent[], field: 'section' | 'itemName') => {
   return [...counts.entries()].sort((a, b) => b[1] - a[1])
 }
 
-function AdminIcon({ name }: { name: AdminTab | 'logout' | 'back' }) {
-  const paths = {
-    overview: 'M4 13h6V4H4v9Zm10 7h6V11h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z',
-    hours: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm7 7v6m-3-3h6',
-    appointments: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm3 7h3v3H8v-3Zm5 0h3',
-    clients: 'M16 20v-1.5c0-2.5-1.8-4.5-4-4.5H7c-2.2 0-4 2-4 4.5V20M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM17 8h4M19 6v4',
-    services: 'M4 6h16M4 12h16M4 18h16M7 4v4M12 10v4M17 16v4',
-    inventory: 'm4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4 8-4V7M12 11v10',
-    news: 'M5 4h14v16H5V4Zm3 4h8M8 12h8M8 16h5',
-    audit: 'M6 3h12v18H6V3Zm3 5h6m-6 4h6m-6 4h4',
-    logout: 'M10 5H5v14h5M14 8l4 4-4 4M8 12h10',
-    back: 'm15 18-6-6 6-6',
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d={paths[name]} />
-    </svg>
-  )
-}
-
 function AdminLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -201,9 +206,9 @@ function AdminLogin() {
   }
 
   return (
-    <main className="admin-login">
+    <main className="admin-login admin-theme">
       <a className="admin-back-link" href="#inicio">
-        <AdminIcon name="back" />
+        <ExternalLink size={19} aria-hidden="true" />
         Volver al sitio
       </a>
       <section className="admin-login-card">
@@ -257,6 +262,7 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const { requestClose, unsavedDialog } = useAdminFormGuard(product, onCancel)
 
   const update = <K extends keyof Product>(key: K, value: Product[K]) =>
     onChange({ ...product, [key]: value })
@@ -290,14 +296,13 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
 
   return (
     <form className="admin-editor" onSubmit={handleSubmit}>
+      {unsavedDialog}
       <div className="admin-editor-head">
         <div>
           <p>{product.id ? 'Editar producto' : 'Nuevo producto'}</p>
           <h2>{product.id ? product.title : 'Agregar al catálogo'}</h2>
         </div>
-        <button className="admin-text-button" type="button" onClick={onCancel}>
-          Cerrar
-        </button>
+        <AdminButton icon={X} variant="ghost" type="button" onClick={() => void requestClose()}>Cerrar</AdminButton>
       </div>
       <div className="admin-form-grid">
         <label className="is-wide">
@@ -312,10 +317,20 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
           Categoría
           <input value={product.category} onChange={(e) => update('category', e.target.value)} required maxLength={100} />
         </label>
-        <label>
-          Precio
-          <input value={product.price} onChange={(e) => update('price', e.target.value)} placeholder="$19.990" required maxLength={30} />
-        </label>
+        <AdminField
+          label="Precio"
+          icon={CircleDollarSign}
+          hint="El signo $ y los separadores de miles se agregan automáticamente."
+          required
+        >
+          <CurrencyInput
+            value={product.price}
+            onValueChange={(_value, formatted) => update('price', formatted)}
+            placeholder="19.990"
+            aria-label="Precio del producto en pesos chilenos"
+            required
+          />
+        </AdminField>
         <label>
           Formato
           <input value={product.size} onChange={(e) => update('size', e.target.value)} placeholder="500 ml" required maxLength={80} />
@@ -350,7 +365,7 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
           <input value={product.image} onChange={(e) => update('image', e.target.value)} required />
         </label>
         <label className="admin-file-field is-wide">
-          O subir una imagen
+          <span><ImagePlus size={18} aria-hidden="true" /> O subir una imagen</span>
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => void handleImage(e.target.files?.[0])} />
           <span>
             {isUploading
@@ -369,10 +384,8 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
       ) : null}
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
       <div className="admin-form-actions">
-        <button className="admin-secondary-button" type="button" onClick={onCancel}>Cancelar</button>
-        <button className="admin-primary-button" type="submit" disabled={isSaving || isUploading}>
-          {isSaving ? 'Guardando...' : 'Guardar producto'}
-        </button>
+        <AdminButton type="button" onClick={() => void requestClose()}>Cancelar</AdminButton>
+        <AdminButton variant="primary" icon={Save} type="submit" isLoading={isSaving} disabled={isUploading}>Guardar producto</AdminButton>
       </div>
     </form>
   )
@@ -389,6 +402,7 @@ function NewsForm({ item, onChange, onCancel, onSaved }: NewsFormProps) {
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const { requestClose, unsavedDialog } = useAdminFormGuard(item, onCancel)
   const update = <K extends keyof NewsItem>(key: K, value: NewsItem[K]) =>
     onChange({ ...item, [key]: value })
 
@@ -421,12 +435,13 @@ function NewsForm({ item, onChange, onCancel, onSaved }: NewsFormProps) {
 
   return (
     <form className="admin-editor" onSubmit={handleSubmit}>
+      {unsavedDialog}
       <div className="admin-editor-head">
         <div>
           <p>{item.id ? 'Editar novedad' : 'Nueva publicación'}</p>
           <h2>{item.id ? item.title : 'Publicar una novedad'}</h2>
         </div>
-        <button className="admin-text-button" type="button" onClick={onCancel}>Cerrar</button>
+        <AdminButton icon={X} variant="ghost" type="button" onClick={() => void requestClose()}>Cerrar</AdminButton>
       </div>
       <div className="admin-form-grid">
         <label className="is-wide">
@@ -462,7 +477,7 @@ function NewsForm({ item, onChange, onCancel, onSaved }: NewsFormProps) {
           <input value={item.image} onChange={(e) => update('image', e.target.value)} required />
         </label>
         <label className="admin-file-field is-wide">
-          O subir una imagen
+          <span><ImagePlus size={18} aria-hidden="true" /> O subir una imagen</span>
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => void handleImage(e.target.files?.[0])} />
           <span>
             {isUploading
@@ -481,10 +496,8 @@ function NewsForm({ item, onChange, onCancel, onSaved }: NewsFormProps) {
       ) : null}
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
       <div className="admin-form-actions">
-        <button className="admin-secondary-button" type="button" onClick={onCancel}>Cancelar</button>
-        <button className="admin-primary-button" type="submit" disabled={isSaving || isUploading}>
-          {isSaving ? 'Guardando...' : 'Guardar novedad'}
-        </button>
+        <AdminButton type="button" onClick={() => void requestClose()}>Cancelar</AdminButton>
+        <AdminButton variant="primary" icon={Save} type="submit" isLoading={isSaving} disabled={isUploading}>Guardar novedad</AdminButton>
       </div>
     </form>
   )
@@ -505,6 +518,7 @@ function ServiceCategoryForm({
 }: ServiceCategoryFormProps) {
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const { requestClose, unsavedDialog } = useAdminFormGuard(category, onCancel)
   const update = <K extends keyof ServiceCategory>(
     key: K,
     value: ServiceCategory[K],
@@ -526,12 +540,13 @@ function ServiceCategoryForm({
 
   return (
     <form className="admin-editor" onSubmit={handleSubmit}>
+      {unsavedDialog}
       <div className="admin-editor-head">
         <div>
           <p>{category.id ? 'Editar categoría' : 'Nueva categoría'}</p>
           <h2>{category.title || 'Categoría de servicios'}</h2>
         </div>
-        <button className="admin-text-button" type="button" onClick={onCancel}>Cerrar</button>
+        <AdminButton icon={X} variant="ghost" type="button" onClick={() => void requestClose()}>Cerrar</AdminButton>
       </div>
       <div className="admin-form-grid">
         <label className="is-wide">
@@ -565,10 +580,8 @@ function ServiceCategoryForm({
       </div>
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
       <div className="admin-form-actions">
-        <button className="admin-secondary-button" type="button" onClick={onCancel}>Cancelar</button>
-        <button className="admin-primary-button" type="submit" disabled={isSaving}>
-          {isSaving ? 'Guardando...' : 'Guardar categoría'}
-        </button>
+        <AdminButton type="button" onClick={() => void requestClose()}>Cancelar</AdminButton>
+        <AdminButton variant="primary" icon={Save} type="submit" isLoading={isSaving}>Guardar categoría</AdminButton>
       </div>
     </form>
   )
@@ -591,6 +604,7 @@ function ServiceItemForm({
 }: ServiceItemFormProps) {
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const { requestClose, unsavedDialog } = useAdminFormGuard(item, onCancel)
   const update = <K extends keyof ServiceItem>(key: K, value: ServiceItem[K]) =>
     onChange({ ...item, [key]: value })
 
@@ -610,12 +624,13 @@ function ServiceItemForm({
 
   return (
     <form className="admin-editor" onSubmit={handleSubmit}>
+      {unsavedDialog}
       <div className="admin-editor-head">
         <div>
           <p>{item.id ? 'Editar servicio' : 'Nuevo servicio'}</p>
           <h2>{item.name || 'Servicio de la landing'}</h2>
         </div>
-        <button className="admin-text-button" type="button" onClick={onCancel}>Cerrar</button>
+        <AdminButton icon={X} variant="ghost" type="button" onClick={() => void requestClose()}>Cerrar</AdminButton>
       </div>
       <div className="admin-form-grid">
         <label className="is-wide">
@@ -631,10 +646,18 @@ function ServiceItemForm({
           Nombre
           <input value={item.name} onChange={(e) => update('name', e.target.value)} required maxLength={140} />
         </label>
-        <label>
-          Precio
-          <input value={item.price} onChange={(e) => update('price', e.target.value)} placeholder="$39.990" required maxLength={60} />
-        </label>
+        <AdminField
+          label="Precio"
+          icon={CircleDollarSign}
+          hint="Elige un formato; el valor público se genera automáticamente."
+          required
+        >
+          <CatalogPriceInput
+            value={item.price}
+            onChange={(value) => update('price', value)}
+            required
+          />
+        </AdminField>
         <label>
           Orden
           <input type="number" min="0" value={item.order} onChange={(e) => update('order', Number(e.target.value))} required />
@@ -646,10 +669,8 @@ function ServiceItemForm({
       </div>
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
       <div className="admin-form-actions">
-        <button className="admin-secondary-button" type="button" onClick={onCancel}>Cancelar</button>
-        <button className="admin-primary-button" type="submit" disabled={isSaving}>
-          {isSaving ? 'Guardando...' : 'Guardar servicio'}
-        </button>
+        <AdminButton type="button" onClick={() => void requestClose()}>Cancelar</AdminButton>
+        <AdminButton variant="primary" icon={Save} type="submit" isLoading={isSaving}>Guardar servicio</AdminButton>
       </div>
     </form>
   )
@@ -664,6 +685,7 @@ type ServicesPanelProps = {
 function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
   const [categoryDraft, setCategoryDraft] = useState<ServiceCategory | null>(null)
   const [itemDraft, setItemDraft] = useState<ServiceItem | null>(null)
+  const { confirm, confirmDialog } = useAdminConfirm()
   const sortedCategories = useMemo(
     () => [...categories].sort((first, second) => first.order - second.order),
     [categories],
@@ -704,11 +726,12 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
 
   return (
     <section className="admin-content-card services-admin-board">
+      {confirmDialog}
       <div className="admin-card-heading">
         <div><p>Landing</p><h2>{categories.length} categorías de servicios</h2></div>
         <div className="services-admin-actions">
-          <button
-            className="admin-secondary-button"
+          <AdminButton
+            icon={Plus}
             type="button"
             onClick={() => {
               const firstCategory = sortedCategories[0]
@@ -723,14 +746,15 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
             disabled={!sortedCategories.length}
           >
             Agregar servicio
-          </button>
-          <button
-            className="admin-primary-button"
+          </AdminButton>
+          <AdminButton
+            variant="primary"
+            icon={FolderPlus}
             type="button"
             onClick={() => setCategoryDraft(emptyServiceCategory(categories.length + 1))}
           >
             Agregar categoría
-          </button>
+          </AdminButton>
         </div>
       </div>
       {!sortedCategories.length ? (
@@ -761,7 +785,7 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
                     {category.active ? 'Visible' : 'Oculta'}
                   </small>
                   <div className="admin-row-actions">
-                    <button type="button" onClick={() => setCategoryDraft(category)}>Editar</button>
+                    <button type="button" onClick={() => setCategoryDraft(category)}><Pencil size={17} aria-hidden="true" /> Editar</button>
                     <button
                       type="button"
                       onClick={() =>
@@ -770,23 +794,24 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
                         )
                       }
                     >
-                      Servicio
+                      <Plus size={17} aria-hidden="true" /> Servicio
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `¿Eliminar "${category.title}" y sus servicios?`,
-                          )
-                        ) {
+                      onClick={async () => {
+                        const accepted = await confirm({
+                          title: `Eliminar categoría ${category.title}`,
+                          description: `También se eliminarán sus ${categoryItems.length} servicios asociados.`,
+                          confirmLabel: 'Eliminar categoría',
+                        })
+                        if (accepted) {
                           void removeServiceCategory(category, sortedItems).then(() =>
                             onNotice('Categoría eliminada.'),
                           )
                         }
                       }}
                     >
-                      Eliminar
+                      <Trash2 size={17} aria-hidden="true" /> Eliminar
                     </button>
                   </div>
                 </header>
@@ -802,18 +827,23 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
                         {item.active ? 'Visible' : 'Oculto'}
                       </em>
                       <div className="admin-row-actions">
-                        <button type="button" onClick={() => setItemDraft(item)}>Editar</button>
+                        <button type="button" onClick={() => setItemDraft(item)}><Pencil size={17} aria-hidden="true" /> Editar</button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`¿Eliminar "${item.name}"?`)) {
+                          onClick={async () => {
+                            const accepted = await confirm({
+                              title: `Eliminar servicio ${item.name}`,
+                              description: 'El servicio dejará de aparecer en el panel y en el catálogo público.',
+                              confirmLabel: 'Eliminar servicio',
+                            })
+                            if (accepted) {
                               void removeServiceItem(item).then(() =>
                                 onNotice('Servicio eliminado.'),
                               )
                             }
                           }}
                         >
-                          Eliminar
+                          <Trash2 size={17} aria-hidden="true" /> Eliminar
                         </button>
                       </div>
                     </div>
@@ -935,11 +965,64 @@ export default function AdminPanel() {
   const [newsDraft, setNewsDraft] = useState<NewsItem | null>(null)
   const [notice, setNotice] = useState('')
   const [dataError, setDataError] = useState('')
+  const { confirm: confirmAdmin, confirmDialog: adminConfirmDialog } = useAdminConfirm()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const mobileSidebarRef = useRef<HTMLElement>(null)
+  const mobileMenuWasOpen = useRef(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const stored = window.localStorage.getItem('sr-admin-sidebar-collapsed')
+    if (stored !== null) return stored === 'true'
+    return window.matchMedia('(max-width: 1199px)').matches
+  })
+  const currentNavigationItem = getAdminNavigationItem(activeTab)
+
+  const selectTab = (tab: AdminTab) => {
+    setActiveTab(tab)
+    setMobileMenuOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((current) => {
+      const next = !current
+      window.localStorage.setItem('sr-admin-sidebar-collapsed', String(next))
+      return next
+    })
+  }
 
   useEffect(() => observeAdmin((nextUser) => {
     setUser(nextUser)
     setAuthReady(true)
   }), [])
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [])
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      mobileMenuWasOpen.current = true
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      window.setTimeout(() => {
+        mobileSidebarRef.current
+          ?.querySelector<HTMLElement>('nav button[aria-current="page"]')
+          ?.focus()
+      }, 0)
+      return () => {
+        document.body.style.overflow = previousOverflow
+      }
+    }
+    if (mobileMenuWasOpen.current) {
+      mobileMenuWasOpen.current = false
+      mobileMenuButtonRef.current?.focus()
+    }
+  }, [mobileMenuOpen])
 
   useEffect(() => {
     if (!user) return
@@ -1086,60 +1169,87 @@ export default function AdminPanel() {
     ],
   )
 
-  if (!authReady) return <div className="admin-loading">Cargando acceso seguro...</div>
+  if (!authReady) return <div className="admin-loading admin-theme">Cargando acceso seguro...</div>
   if (!user) return <AdminLogin />
 
   return (
-    <div className="admin-shell">
-      <aside className="admin-sidebar">
+    <div
+      className={`admin-shell admin-theme ${sidebarCollapsed ? 'is-sidebar-collapsed' : ''} ${mobileMenuOpen ? 'is-mobile-menu-open' : ''}`}
+    >
+      <button
+        className="admin-mobile-backdrop"
+        type="button"
+        aria-label="Cerrar menú"
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      <aside
+        className="admin-sidebar"
+        aria-label="Navegación del panel"
+        id="admin-mobile-navigation"
+        ref={mobileSidebarRef}
+      >
         <div className="admin-sidebar-brand">
           <span>SR</span>
           <div><strong>Susana Riquelme</strong><small>Administración</small></div>
         </div>
-        <nav>
-          {([
-            ['overview', 'Analíticas'],
-            ['hours', 'Horas'],
-            ['appointments', 'Finanzas'],
-            ['clients', 'Clientas'],
-            ['services', 'Servicios'],
-            ['inventory', 'Inventario'],
-            ['news', 'Novedades'],
-            ['audit', 'Historial'],
-          ] as const).map(([tab, label]) => (
+        <button
+          className="admin-sidebar-collapse"
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={sidebarCollapsed ? 'Desplegar menú lateral' : 'Plegar menú lateral'}
+          title={sidebarCollapsed ? 'Desplegar menú' : 'Plegar menú'}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+          <span>{sidebarCollapsed ? 'Desplegar menú' : 'Plegar menú'}</span>
+        </button>
+        <nav aria-label="Módulos administrativos">
+          {adminNavigation.map((item) => {
+            const Icon = item.icon
+            return (
             <button
-              className={activeTab === tab ? 'is-active' : ''}
+              className={activeTab === item.id ? 'is-active' : ''}
               type="button"
-              onClick={() => setActiveTab(tab)}
-              key={tab}
+              onClick={() => selectTab(item.id)}
+              key={item.id}
+              aria-current={activeTab === item.id ? 'page' : undefined}
+              aria-label={item.label}
+              title={sidebarCollapsed ? item.label : undefined}
             >
-              <AdminIcon name={tab} />
-              {label}
+              <Icon aria-hidden="true" />
+              <span>{item.label}</span>
             </button>
-          ))}
+            )
+          })}
         </nav>
         <div className="admin-sidebar-footer">
-          <a href="#inicio"><AdminIcon name="back" />Ver sitio público</a>
+          <a href="#inicio"><ExternalLink aria-hidden="true" /><span>Ver sitio público</span></a>
           <button type="button" onClick={() => void logoutAdmin()}>
-            <AdminIcon name="logout" />Cerrar sesión
+            <LogOut aria-hidden="true" /><span>Cerrar sesión</span>
           </button>
         </div>
       </aside>
 
       <main className="admin-main">
+        {adminConfirmDialog}
+        <div className="admin-mobile-bar">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Abrir menú"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="admin-mobile-navigation"
+            ref={mobileMenuButtonRef}
+          >
+            <Menu aria-hidden="true" />
+          </button>
+          <div><strong>{currentNavigationItem.label}</strong><small>Panel administrativo</small></div>
+          <span aria-hidden="true">SR</span>
+        </div>
         <header className="admin-topbar">
           <div>
             <p>Panel privado</p>
-            <h1>
-              {activeTab === 'overview' ? 'Resumen de actividad' : null}
-              {activeTab === 'hours' ? 'Gestión de horas' : null}
-              {activeTab === 'appointments' ? 'Finanzas del salón' : null}
-              {activeTab === 'clients' ? 'Gestión de clientas' : null}
-              {activeTab === 'services' ? 'Servicios de la landing' : null}
-              {activeTab === 'inventory' ? 'Inventario y catálogo' : null}
-              {activeTab === 'news' ? 'Novedades del salón' : null}
-              {activeTab === 'audit' ? 'Historial de cambios' : null}
-            </h1>
+            <h1>{currentNavigationItem.title}</h1>
+            <span>{currentNavigationItem.description}</span>
           </div>
           <div className="admin-user">
             <span>{user.email?.slice(0, 1).toUpperCase()}</span>
@@ -1147,25 +1257,32 @@ export default function AdminPanel() {
           </div>
         </header>
 
-        {notice ? <button className="admin-notice" type="button" onClick={() => setNotice('')}>{notice} ×</button> : null}
-        {dataError ? <p className="admin-error admin-page-error">{dataError}</p> : null}
+        {notice ? (
+          <button className="admin-notice" type="button" onClick={() => setNotice('')} role="status">
+            <CheckCircle2 size={20} aria-hidden="true" /><span>{notice}</span><X size={18} aria-hidden="true" />
+          </button>
+        ) : null}
+        {dataError ? <p className="admin-error admin-page-error" role="alert">{dataError}</p> : null}
 
         {activeTab === 'overview' ? (
           <>
-            <div className="admin-quick-stats">
-              <span>{stats.activeProducts} productos visibles</span>
-              <span>{stats.clients} clientas registradas</span>
-              <span>{stats.lowStock} productos con stock bajo</span>
-              <span>{stats.activeServices} servicios visibles</span>
-              <span>
-                {new Intl.NumberFormat('es-CL', {
+            <div className="admin-overview-grid">
+              <article><PackageSearch aria-hidden="true" /><div><strong>{stats.activeProducts}</strong><span>Productos visibles</span></div></article>
+              <article><UsersRound aria-hidden="true" /><div><strong>{stats.clients}</strong><span>Clientas registradas</span></div></article>
+              <article><Activity aria-hidden="true" /><div><strong>{stats.sessions}</strong><span>Sesiones registradas</span></div></article>
+              <article><Scissors aria-hidden="true" /><div><strong>{stats.activeServices}</strong><span>Servicios visibles</span></div></article>
+              <article><CircleDollarSign aria-hidden="true" /><div><strong>{new Intl.NumberFormat('es-CL', {
                   currency: 'CLP',
                   maximumFractionDigits: 0,
                   style: 'currency',
-                }).format(stats.appointmentsRevenue)} en finanzas
-              </span>
-              <span>{stats.activeNews} novedades publicadas</span>
-              <span>{stats.sessions} sesiones registradas</span>
+                }).format(stats.appointmentsRevenue)}</strong><span>Ingresos registrados</span></div></article>
+              <article><Newspaper aria-hidden="true" /><div><strong>{stats.activeNews}</strong><span>Novedades publicadas</span></div></article>
+              <article className={stats.lowStock ? 'has-warning' : ''}><CalendarCheck2 aria-hidden="true" /><div><strong>{stats.lowStock}</strong><span>Productos con stock bajo</span></div></article>
+            </div>
+            <div className="admin-overview-actions" aria-label="Acciones frecuentes">
+              <AdminButton variant="primary" icon={CalendarCheck2} type="button" onClick={() => selectTab('hours')}>Ir a la agenda</AdminButton>
+              <AdminButton icon={UsersRound} type="button" onClick={() => selectTab('clients')}>Buscar clienta</AdminButton>
+              <AdminButton icon={PackageSearch} type="button" onClick={() => selectTab('inventory')}>Revisar inventario</AdminButton>
             </div>
             <AnalyticsView events={events} />
           </>
@@ -1230,11 +1347,14 @@ export default function AdminPanel() {
               stylists={stylists}
               onAddProduct={() => setProductDraft(emptyProduct(products.length + 1))}
               onEditProduct={setProductDraft}
-              onDeleteProduct={(product) => {
-                if (
-                  product.id &&
-                  window.confirm(`¿Eliminar "${product.title}" y su inventario?`)
-                ) {
+              onDeleteProduct={async (product) => {
+                if (!product.id) return
+                const accepted = await confirmAdmin({
+                  title: `Eliminar producto ${product.title}`,
+                  description: 'También se eliminará su registro de inventario y no aparecerá en el catálogo.',
+                  confirmLabel: 'Eliminar producto',
+                })
+                if (accepted) {
                   void removeProduct(product.id, product.title)
                 }
               }}
@@ -1257,9 +1377,9 @@ export default function AdminPanel() {
             <section className="admin-content-card">
               <div className="admin-card-heading">
                 <div><p>Publicaciones</p><h2>{news.length} novedades</h2></div>
-                <button className="admin-primary-button" type="button" onClick={() => setNewsDraft(emptyNewsItem(news.length + 1))}>
+                <AdminButton variant="primary" icon={Plus} type="button" onClick={() => setNewsDraft(emptyNewsItem(news.length + 1))}>
                   Agregar novedad
-                </button>
+                </AdminButton>
               </div>
               {!news.length ? (
                 <div className="admin-empty-state">
@@ -1275,16 +1395,22 @@ export default function AdminPanel() {
                       <div><strong>{item.title}</strong><span>{item.category} · {item.date}</span></div>
                       <small className={item.active ? 'is-published' : ''}>{item.active ? 'Publicada' : 'Oculta'}</small>
                       <div className="admin-row-actions">
-                        <button type="button" onClick={() => setNewsDraft(item)}>Editar</button>
+                        <button type="button" onClick={() => setNewsDraft(item)}><Pencil size={17} aria-hidden="true" /> Editar</button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (item.id && window.confirm(`¿Eliminar "${item.title}"?`)) {
+                          onClick={async () => {
+                            if (!item.id) return
+                            const accepted = await confirmAdmin({
+                              title: `Eliminar novedad ${item.title}`,
+                              description: 'La publicación desaparecerá del panel y del sitio público.',
+                              confirmLabel: 'Eliminar novedad',
+                            })
+                            if (accepted) {
                               void removeNewsItem(item.id, item.title)
                             }
                           }}
                         >
-                          Eliminar
+                          <Trash2 size={17} aria-hidden="true" /> Eliminar
                         </button>
                       </div>
                     </article>

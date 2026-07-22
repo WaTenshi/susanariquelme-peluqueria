@@ -1,4 +1,14 @@
 import { useMemo, useState } from 'react'
+import {
+  Boxes,
+  CirclePlus,
+  FileClock,
+  PackageCheck,
+  Pencil,
+  Search,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react'
 import type { AuditAction, AuditEntity, AuditLog } from './types'
 
 const entityLabels: Record<AuditEntity, string> = {
@@ -17,6 +27,13 @@ const actionLabels: Record<AuditAction, string> = {
   update: 'Edición',
   delete: 'Eliminación',
   stock: 'Movimiento',
+}
+
+const actionIcons: Record<AuditAction, LucideIcon> = {
+  create: CirclePlus,
+  update: Pencil,
+  delete: Trash2,
+  stock: PackageCheck,
 }
 
 const formatDate = (log: AuditLog) => {
@@ -51,12 +68,15 @@ export default function AuditPanel({ logs }: { logs: AuditLog[] }) {
         <span>{filteredLogs.length} registros</span>
       </div>
       <div className="audit-toolbar">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar persona, producto o cambio"
-        />
+        <span className="admin-search-control">
+          <Search size={19} aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar persona, producto o cambio"
+          />
+        </span>
         <select
           value={entity}
           onChange={(event) =>
@@ -70,9 +90,12 @@ export default function AuditPanel({ logs }: { logs: AuditLog[] }) {
         </select>
       </div>
       <div className="audit-list">
-        {filteredLogs.map((log) => (
+        {filteredLogs.map((log) => {
+          const ActionIcon = actionIcons[log.action]
+          return (
           <article key={log.id}>
             <div className={`audit-action is-${log.action}`}>
+              <ActionIcon size={19} aria-hidden="true" />
               <span>{actionLabels[log.action]}</span>
               <small>{entityLabels[log.entityType]}</small>
             </div>
@@ -87,10 +110,13 @@ export default function AuditPanel({ logs }: { logs: AuditLog[] }) {
               <time>{formatDate(log)}</time>
             </div>
           </article>
-        ))}
+          )
+        })}
         {!filteredLogs.length ? (
           <div className="admin-empty-state">
+            <FileClock size={32} aria-hidden="true" />
             <h3>No hay cambios con estos filtros</h3>
+            <p><Boxes size={16} aria-hidden="true" /> Prueba con otro módulo o término de búsqueda.</p>
           </div>
         ) : null}
       </div>

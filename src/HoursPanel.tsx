@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { cancelBooking, saveBooking } from './firebase'
 import ClientPickerModal from './ClientPickerModal'
+import { useAdminConfirm } from './admin-confirm'
 import type {
   AppointmentRecord,
   Booking,
@@ -497,6 +498,7 @@ export default function HoursPanel({
   const [query, setQuery] = useState('')
   const [draft, setDraft] = useState<Booking | null>(null)
   const [detail, setDetail] = useState<Booking | null>(null)
+  const { confirm, confirmDialog } = useAdminConfirm()
 
   const activeBookings = useMemo(
     () => bookings.filter((booking) => booking.active !== false),
@@ -678,7 +680,12 @@ export default function HoursPanel({
   }
 
   const handleCancel = async (booking: Booking) => {
-    if (!window.confirm(`¿Anular la hora de ${booking.clientName}?`)) return
+    const accepted = await confirm({
+      title: `Anular hora de ${booking.clientName}`,
+      description: 'La hora dejará de aparecer como activa, pero se conservará en el historial de cambios.',
+      confirmLabel: 'Anular hora',
+    })
+    if (!accepted) return
     await cancelBooking(booking)
     setDetail(null)
     onNotice('Hora anulada. El registro quedó en el historial de cambios.')
@@ -705,6 +712,7 @@ export default function HoursPanel({
 
   return (
     <div className="hours-panel">
+      {confirmDialog}
       <section className="finance-hero hours-hero">
         <div>
           <p>Agenda del salón</p>

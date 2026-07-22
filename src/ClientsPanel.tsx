@@ -1,5 +1,21 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  AtSign,
+  CalendarPlus,
+  Cake,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  Search,
+  Star,
+  Trash2,
+  UserPlus,
+  UsersRound,
+} from 'lucide-react'
+import {
   removeClient,
   removeClientVisit,
   saveClient,
@@ -7,6 +23,8 @@ import {
   subscribeToClientVisits,
 } from './firebase'
 import type { Client, ClientVisit } from './types'
+import { AdminButton } from './admin-ui'
+import { useAdminConfirm } from './admin-confirm'
 
 const emptyClient = (): Client => ({
   firstName: '',
@@ -439,6 +457,7 @@ export default function ClientsPanel({
     clientId: string
     items: ClientVisit[]
   }>({ clientId: '', items: [] })
+  const { confirm, confirmDialog } = useAdminConfirm()
 
   const lastVisitByClient = useMemo(() => {
     const dates = new Map<string, number>()
@@ -508,42 +527,48 @@ export default function ClientsPanel({
 
   return (
     <div className="clients-layout">
+      {confirmDialog}
       <section className="clients-directory">
         <div className="admin-card-heading">
           <div>
             <p>Directorio privado</p>
             <h2>{clients.length} clientas</h2>
           </div>
-          <button
-            className="admin-primary-button"
+          <AdminButton
+            variant="primary"
+            icon={UserPlus}
             type="button"
             onClick={() => setClientDraft(emptyClient())}
           >
             Nueva clienta
-          </button>
+          </AdminButton>
         </div>
         <label className="clients-search">
           <span>Buscar clienta</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Nombre, teléfono, correo o comuna"
-          />
+          <span className="admin-search-control">
+            <Search size={19} aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Nombre, teléfono, correo o comuna"
+            />
+          </span>
         </label>
         <div className="clients-filters" aria-label="Filtros de clientas">
           {([
-            ['all', 'Todas'],
-            ['vip', 'VIP'],
-            ['recent', 'Más recientes'],
-            ['oldest', 'Menos recientes'],
-          ] as const).map(([value, label]) => (
+            ['all', 'Todas', UsersRound],
+            ['vip', 'VIP', Star],
+            ['recent', 'Más recientes', ArrowDownAZ],
+            ['oldest', 'Menos recientes', ArrowUpAZ],
+          ] as const).map(([value, label, FilterIcon]) => (
             <button
               className={filter === value ? 'is-active' : ''}
               type="button"
               onClick={() => setFilter(value)}
               key={value}
             >
+              <FilterIcon size={16} aria-hidden="true" />
               {label}
             </button>
           ))}
@@ -590,15 +615,16 @@ export default function ClientsPanel({
                 <span>{selectedClient.active ? 'Ficha activa' : 'Ficha archivada'}</span>
               </div>
               <div className="client-profile-actions">
-                <button
-                  className="admin-secondary-button"
+                <AdminButton
+                  icon={Pencil}
                   type="button"
                   onClick={() => setClientDraft(selectedClient)}
                 >
                   Editar ficha
-                </button>
-                <button
-                  className="admin-primary-button"
+                </AdminButton>
+                <AdminButton
+                  variant="primary"
+                  icon={CalendarPlus}
                   type="button"
                   onClick={() =>
                     selectedClient.id &&
@@ -606,15 +632,15 @@ export default function ClientsPanel({
                   }
                 >
                   Nueva atención
-                </button>
+                </AdminButton>
               </div>
             </div>
             <div className="client-contact-grid">
-              <div><span>Teléfono</span><strong>{selectedClient.phone || 'Sin información'}</strong></div>
-              <div><span>Cumpleaños</span><strong>{selectedClient.birthday ? formatBirthday(selectedClient.birthday) : 'Sin información'}</strong></div>
-              <div><span>Comuna</span><strong>{selectedClient.commune || 'Sin información'}</strong></div>
-              <div><span>Correo</span><strong>{selectedClient.email || 'Sin información'}</strong></div>
-              <div><span>Instagram</span><strong>{selectedClient.instagram || 'Sin información'}</strong></div>
+              <div><span><Phone size={16} aria-hidden="true" /> Teléfono</span><strong>{selectedClient.phone || 'Sin información'}</strong></div>
+              <div><span><Cake size={16} aria-hidden="true" /> Cumpleaños</span><strong>{selectedClient.birthday ? formatBirthday(selectedClient.birthday) : 'Sin información'}</strong></div>
+              <div><span><MapPin size={16} aria-hidden="true" /> Comuna</span><strong>{selectedClient.commune || 'Sin información'}</strong></div>
+              <div><span><Mail size={16} aria-hidden="true" /> Correo</span><strong>{selectedClient.email || 'Sin información'}</strong></div>
+              <div><span><AtSign size={16} aria-hidden="true" /> Instagram</span><strong>{selectedClient.instagram || 'Sin información'}</strong></div>
             </div>
             {selectedClient.notes ? (
               <div className="client-general-notes">
@@ -644,16 +670,18 @@ export default function ClientsPanel({
                     {visit.amount ? <b>{visit.amount}</b> : null}
                   </div>
                   <div className="admin-row-actions">
-                    <button type="button" onClick={() => setVisitDraft(visit)}>Editar</button>
+                    <button type="button" onClick={() => setVisitDraft(visit)}><Pencil size={17} aria-hidden="true" /> Editar</button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('¿Eliminar esta atención del historial?')) {
-                          void removeClientVisit(visit, clientName(selectedClient))
-                        }
+                      onClick={async () => {
+                        const accepted = await confirm({
+                          title: 'Eliminar atención del historial',
+                          description: `Se eliminará la atención de ${clientName(selectedClient)}${visit.date ? ` del ${visit.date}` : ''}.`,
+                        })
+                        if (accepted) void removeClientVisit(visit, clientName(selectedClient))
                       }}
                     >
-                      Eliminar
+                      <Trash2 size={17} aria-hidden="true" /> Eliminar
                     </button>
                   </div>
                 </article>
@@ -668,17 +696,16 @@ export default function ClientsPanel({
             <button
               className="client-delete-button"
               type="button"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `¿Eliminar la ficha de ${clientName(selectedClient)}?`,
-                  )
-                ) {
-                  void removeClient(selectedClient)
-                }
+              onClick={async () => {
+                const accepted = await confirm({
+                  title: `Eliminar ficha de ${clientName(selectedClient)}`,
+                  description: 'Se eliminarán la ficha y el acceso a su historial desde el directorio.',
+                  confirmLabel: 'Eliminar ficha',
+                })
+                if (accepted) void removeClient(selectedClient)
               }}
             >
-              Eliminar ficha
+              <Trash2 size={18} aria-hidden="true" /> Eliminar ficha
             </button>
           </>
         ) : (
