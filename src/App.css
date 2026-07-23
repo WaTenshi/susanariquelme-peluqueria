@@ -1926,35 +1926,59 @@
 .hair-model-head {
   position: absolute;
   top: 1rem;
-  left: 4.15rem;
-  width: 3.7rem;
-  height: 5rem;
-  background: linear-gradient(130deg, #d5aa8d, #efc9ad);
-  border-radius: 48% 48% 44% 44%;
+  left: 3.95rem;
+  width: 4.1rem;
+  height: 5.2rem;
+  background: linear-gradient(135deg, #d2a486, #efc6a9 58%, #d9aa8c);
+  border-radius: 50% 50% 46% 46% / 44% 44% 54% 54%;
 }
 
 .hair-model-neck {
   position: absolute;
-  z-index: -1;
-  top: 5.15rem;
-  left: 5rem;
-  width: 2rem;
-  height: 3.4rem;
-  background: #e7bfa3;
+  z-index: -2;
+  top: 5.25rem;
+  left: 5.2rem;
+  width: 1.6rem;
+  height: 2.7rem;
+  background: linear-gradient(90deg, #dcae91, #edc3a6 52%, #d6a486);
+  border-radius: 0 0 48% 48% / 0 0 28% 28%;
+  box-shadow: inset 0.25rem 0 0.45rem rgba(125, 76, 49, 0.08);
 }
 
 .hair-model-body {
   position: absolute;
-  z-index: -2;
+  z-index: -1;
   right: 0;
   bottom: 0;
   left: 0;
   height: 16.5rem;
-  background:
-    linear-gradient(90deg, transparent 0 18%, #f4f0e9 18% 82%, transparent 82%),
-    linear-gradient(120deg, #d5aa8d, #efc9ad);
+  overflow: hidden;
+  background: linear-gradient(120deg, #d2a183, #efc6aa 54%, #d6a486);
   border-radius: 48% 48% 0 0;
   clip-path: polygon(20% 0, 80% 0, 100% 18%, 100% 100%, 0 100%, 0 18%);
+}
+
+.hair-model-body::before {
+  position: absolute;
+  inset: 0 18% 0;
+  background: radial-gradient(
+    ellipse 1.45rem 1rem at 50% 0,
+    transparent 0 96%,
+    #f5f1eb 100%
+  );
+  content: '';
+}
+
+.hair-model-body::after {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 3rem;
+  height: 1.15rem;
+  border-bottom: 1px solid rgba(117, 86, 65, 0.1);
+  border-radius: 0 0 50% 50%;
+  content: '';
+  transform: translateX(-50%);
 }
 
 .hair-shape {
@@ -1974,7 +1998,33 @@
   border-radius: 48% 48% 38% 38% / 18% 18% 8% 8%;
   box-shadow: 0 0.9rem 1.4rem rgba(76, 55, 34, 0.24);
   clip-path: polygon(13% 0, 87% 0, 100% 100%, 0 100%);
-  transition: height 360ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  transition:
+    height 360ms cubic-bezier(0.2, 0.75, 0.25, 1),
+    left 360ms cubic-bezier(0.2, 0.75, 0.25, 1),
+    width 360ms cubic-bezier(0.2, 0.75, 0.25, 1),
+    border-radius 360ms ease,
+    clip-path 360ms ease;
+}
+
+.hair-shape::after {
+  position: absolute;
+  right: 8%;
+  bottom: 0;
+  left: 8%;
+  height: 0.75rem;
+  background: linear-gradient(180deg, transparent, rgba(112, 75, 38, 0.2));
+  border-radius: 0 0 50% 50%;
+  content: '';
+}
+
+.hair-stage[data-length='short'] .hair-shape {
+  left: 3rem;
+  width: 6rem;
+  border-radius: 50% 50% 38% 38% / 28% 28% 32% 32%;
+  clip-path: none;
+  clip-path: path(
+    'M 48 0 C 24 0 13 9 10 29 L 3 65 C 11 75 26 81 48 82 C 70 81 85 75 93 65 L 86 29 C 83 9 72 0 48 0 Z'
+  );
 }
 
 .hair-stage[data-length='medium'] .hair-shape { height: 9.4rem; }
