@@ -63,11 +63,11 @@ export default function AuditPanel({ logs }: { logs: AuditLog[] }) {
 
   return (
     <section className="admin-content-card audit-view">
-      <div className="admin-card-heading">
+      <div className="admin-card-heading" data-tour="audit-heading">
         <div><p>Registro inmutable</p><h2>Historial de cambios</h2></div>
         <span>{filteredLogs.length} registros</span>
       </div>
-      <div className="audit-toolbar">
+      <div className="audit-toolbar" data-tour="audit-toolbar">
         <span className="admin-search-control">
           <Search size={19} aria-hidden="true" />
           <input
@@ -89,23 +89,23 @@ export default function AuditPanel({ logs }: { logs: AuditLog[] }) {
           ))}
         </select>
       </div>
-      <div className="audit-list">
+      <div className="audit-list" data-tour="audit-list">
         {filteredLogs.map((log) => {
           const ActionIcon = actionIcons[log.action]
           return (
           <article key={log.id}>
-            <div className={`audit-action is-${log.action}`}>
+            <div className={`audit-action is-${log.action}`} data-tour="audit-action">
               <ActionIcon size={19} aria-hidden="true" />
               <span>{actionLabels[log.action]}</span>
               <small>{entityLabels[log.entityType]}</small>
             </div>
-            <div className="audit-detail">
+            <div className="audit-detail" data-tour="audit-detail">
               <h3>{log.entityName}</h3>
               <ul>
                 {log.changes.map((change) => <li key={change}>{change}</li>)}
               </ul>
             </div>
-            <div className="audit-meta">
+            <div className="audit-meta" data-tour="audit-meta">
               <strong>{log.actorEmail}</strong>
               <time>{formatDate(log)}</time>
             </div>

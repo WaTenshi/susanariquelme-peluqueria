@@ -1313,7 +1313,7 @@ export default function InventoryPanel({
   return (
     <div className="inventory-view">
       {confirmDialog}
-      <div className="inventory-summary">
+      <div className="inventory-summary" data-tour="inventory-summary">
         <article><span>Productos</span><strong>{products.length}</strong></article>
         <article className={lowStockCount ? 'has-warning' : ''}>
           <span>Stock bajo o agotado</span><strong>{lowStockCount}</strong>
@@ -1324,7 +1324,7 @@ export default function InventoryPanel({
         <article>
           <span>Proveedores activos</span><strong>{activeSuppliers.length}</strong>
         </article>
-        <div className="inventory-main-actions">
+        <div className="inventory-main-actions" data-tour="inventory-actions">
           <AdminButton variant="primary" icon={PackagePlus} type="button" onClick={onAddProduct}>
             Agregar producto
           </AdminButton>
@@ -1356,7 +1356,7 @@ export default function InventoryPanel({
       </div>
 
       <section className="admin-content-card">
-        <div className="inventory-toolbar">
+        <div className="inventory-toolbar" data-tour="inventory-toolbar">
           <span className="admin-search-control">
             <Search size={19} aria-hidden="true" />
             <input
@@ -1393,7 +1393,7 @@ export default function InventoryPanel({
 
         {view === 'general' ? (
           <>
-            <div className="inventory-status-filter">
+            <div className="inventory-status-filter" data-tour="inventory-status">
               {(['all', 'low', 'out'] as const).map((filter) => (
                 <button
                   className={status === filter ? 'is-active' : ''}
@@ -1409,7 +1409,7 @@ export default function InventoryPanel({
                 </button>
               ))}
             </div>
-            <div className="inventory-list">
+            <div className="inventory-list" data-tour="inventory-list">
               {rows.map(({ product, item }) => {
                 const stockStatus =
                   item.stock === 0
@@ -1434,7 +1434,7 @@ export default function InventoryPanel({
                             : 'Disponible'}
                       </span>
                     </div>
-                    <div className="inventory-row-actions">
+                    <div className="inventory-row-actions" data-tour="inventory-row-actions">
                       <button
                         type="button"
                         onClick={() => {
@@ -1585,7 +1585,7 @@ export default function InventoryPanel({
         )}
       </section>
 
-      <section className="admin-content-card inventory-movements">
+      <section className="admin-content-card inventory-movements" data-tour="inventory-movements">
         <div className="admin-card-heading">
           <div><p>Trazabilidad</p><h2>Últimos movimientos</h2></div>
         </div>

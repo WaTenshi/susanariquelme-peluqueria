@@ -5,6 +5,7 @@ import {
   CalendarCheck2,
   CheckCircle2,
   CircleDollarSign,
+  CircleHelp,
   ExternalLink,
   FolderPlus,
   ImagePlus,
@@ -91,6 +92,8 @@ import {
 } from './admin-navigation'
 import { useAdminConfirm } from './admin-confirm'
 import { useAdminFormGuard } from './admin-form-guard'
+import { startAdminTour, stopAdminTour } from './admin-tours'
+import 'driver.js/dist/driver.css'
 import './AdminPanel.css'
 import './AdminUI.css'
 
@@ -725,11 +728,11 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
   }
 
   return (
-    <section className="admin-content-card services-admin-board">
+    <section className="admin-content-card services-admin-board" data-tour="services-board">
       {confirmDialog}
       <div className="admin-card-heading">
         <div><p>Landing</p><h2>{categories.length} categorías de servicios</h2></div>
-        <div className="services-admin-actions">
+        <div className="services-admin-actions" data-tour="services-actions">
           <AdminButton
             icon={Plus}
             type="button"
@@ -766,13 +769,13 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
           </button>
         </div>
       ) : (
-        <div className="services-admin-list">
+        <div className="services-admin-list" data-tour="services-list">
           {sortedCategories.map((category) => {
             const categoryItems = sortedItems.filter(
               (item) => item.categoryId === category.id,
             )
             return (
-              <article className="services-admin-category" key={category.id}>
+              <article className="services-admin-category" data-tour="service-category" key={category.id}>
                 <header>
                   <div>
                     <span>{String(category.order).padStart(2, '0')}</span>
@@ -817,7 +820,7 @@ function ServicesPanel({ categories, items, onNotice }: ServicesPanelProps) {
                 </header>
                 {category.note ? <p>{category.note}</p> : null}
                 {category.disclaimer ? <p>{category.disclaimer}</p> : null}
-                <div className="services-admin-items">
+                <div className="services-admin-items" data-tour="service-items">
                   {categoryItems.length ? categoryItems.map((item) => (
                     <div key={item.id}>
                       <span>{String(item.order).padStart(2, '0')}</span>
@@ -886,14 +889,14 @@ function AnalyticsView({ events }: { events: SiteEvent[] }) {
   }
 
   return (
-    <div className="admin-analytics">
+    <div className="admin-analytics" data-tour="overview-analytics">
       <div className="admin-metrics">
         <article><span>Sesiones registradas</span><strong>{sessions}</strong><small>Hasta 1.000 eventos recientes</small></article>
         <article><span>Visitas de página</span><strong>{pageViews.length}</strong><small>Desde la activación del panel</small></article>
         <article><span>Productos abiertos</span><strong>{productViews.length}</strong><small>Interés directo en catálogo</small></article>
         <article><span>Conversión WhatsApp</span><strong>{conversion}%</strong><small>{productContacts.length} clics de compra</small></article>
       </div>
-      <div className="admin-chart-grid">
+      <div className="admin-chart-grid" data-tour="overview-charts">
         <section className="admin-chart-card">
           <div><p>Contenido</p><h2>Productos más vistos</h2></div>
           {popularProducts.length ? popularProducts.map(([name, count]) => (
@@ -913,7 +916,7 @@ function AnalyticsView({ events }: { events: SiteEvent[] }) {
           )) : <p className="admin-empty-copy">Las secciones aparecerán cuando reciban visitas.</p>}
         </section>
       </div>
-      <section className="admin-events-card">
+      <section className="admin-events-card" data-tour="overview-events">
         <div className="admin-card-heading">
           <div><p>Actividad reciente</p><h2>Últimas interacciones</h2></div>
           <a href="https://analytics.google.com/" target="_blank" rel="noreferrer">
@@ -995,6 +998,12 @@ export default function AdminPanel() {
     setUser(nextUser)
     setAuthReady(true)
   }), [])
+
+  useEffect(() => {
+    stopAdminTour()
+  }, [activeTab])
+
+  useEffect(() => () => stopAdminTour(), [])
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -1245,15 +1254,26 @@ export default function AdminPanel() {
           <div><strong>{currentNavigationItem.label}</strong><small>Panel administrativo</small></div>
           <span aria-hidden="true">SR</span>
         </div>
-        <header className="admin-topbar">
+        <header className="admin-topbar" data-tour="view-header">
           <div>
             <p>Panel privado</p>
             <h1>{currentNavigationItem.title}</h1>
             <span>{currentNavigationItem.description}</span>
           </div>
-          <div className="admin-user">
-            <span>{user.email?.slice(0, 1).toUpperCase()}</span>
-            <div><strong>{user.email}</strong><small>Administradora</small></div>
+          <div className="admin-topbar-actions">
+            <AdminButton
+              className="admin-help-button"
+              data-tour="help-button"
+              icon={CircleHelp}
+              type="button"
+              onClick={(event) => startAdminTour(activeTab, event.currentTarget)}
+            >
+              Ayuda
+            </AdminButton>
+            <div className="admin-user">
+              <span>{user.email?.slice(0, 1).toUpperCase()}</span>
+              <div><strong>{user.email}</strong><small>Administradora</small></div>
+            </div>
           </div>
         </header>
 
@@ -1266,7 +1286,7 @@ export default function AdminPanel() {
 
         {activeTab === 'overview' ? (
           <>
-            <div className="admin-overview-grid">
+            <div className="admin-overview-grid" data-tour="overview-metrics">
               <article><PackageSearch aria-hidden="true" /><div><strong>{stats.activeProducts}</strong><span>Productos visibles</span></div></article>
               <article><UsersRound aria-hidden="true" /><div><strong>{stats.clients}</strong><span>Clientas registradas</span></div></article>
               <article><Activity aria-hidden="true" /><div><strong>{stats.sessions}</strong><span>Sesiones registradas</span></div></article>
@@ -1279,7 +1299,7 @@ export default function AdminPanel() {
               <article><Newspaper aria-hidden="true" /><div><strong>{stats.activeNews}</strong><span>Novedades publicadas</span></div></article>
               <article className={stats.lowStock ? 'has-warning' : ''}><CalendarCheck2 aria-hidden="true" /><div><strong>{stats.lowStock}</strong><span>Productos con stock bajo</span></div></article>
             </div>
-            <div className="admin-overview-actions" aria-label="Acciones frecuentes">
+            <div className="admin-overview-actions" aria-label="Acciones frecuentes" data-tour="overview-quick-actions">
               <AdminButton variant="primary" icon={CalendarCheck2} type="button" onClick={() => selectTab('hours')}>Ir a la agenda</AdminButton>
               <AdminButton icon={UsersRound} type="button" onClick={() => selectTab('clients')}>Buscar clienta</AdminButton>
               <AdminButton icon={PackageSearch} type="button" onClick={() => selectTab('inventory')}>Revisar inventario</AdminButton>
@@ -1374,10 +1394,10 @@ export default function AdminPanel() {
               }}
             />
           ) : (
-            <section className="admin-content-card">
+            <section className="admin-content-card" data-tour="news-board">
               <div className="admin-card-heading">
                 <div><p>Publicaciones</p><h2>{news.length} novedades</h2></div>
-                <AdminButton variant="primary" icon={Plus} type="button" onClick={() => setNewsDraft(emptyNewsItem(news.length + 1))}>
+                <AdminButton data-tour="news-create" variant="primary" icon={Plus} type="button" onClick={() => setNewsDraft(emptyNewsItem(news.length + 1))}>
                   Agregar novedad
                 </AdminButton>
               </div>
@@ -1388,13 +1408,13 @@ export default function AdminPanel() {
                   <button type="button" onClick={() => setNewsDraft(emptyNewsItem(1))}>Agregar novedad</button>
                 </div>
               ) : (
-                <div className="admin-table admin-news-table">
+                <div className="admin-table admin-news-table" data-tour="news-list">
                   {news.map((item) => (
                     <article key={item.id}>
                       <ContentImage source={item.image} alt="" mode="preview" />
                       <div><strong>{item.title}</strong><span>{item.category} · {item.date}</span></div>
                       <small className={item.active ? 'is-published' : ''}>{item.active ? 'Publicada' : 'Oculta'}</small>
-                      <div className="admin-row-actions">
+                      <div className="admin-row-actions" data-tour="news-actions">
                         <button type="button" onClick={() => setNewsDraft(item)}><Pencil size={17} aria-hidden="true" /> Editar</button>
                         <button
                           type="button"

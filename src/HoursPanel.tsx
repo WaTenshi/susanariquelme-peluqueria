@@ -711,9 +711,9 @@ export default function HoursPanel({
   }
 
   return (
-    <div className="hours-panel">
+    <div className="hours-panel" data-tour="hours-panel">
       {confirmDialog}
-      <section className="finance-hero hours-hero">
+      <section className="finance-hero hours-hero" data-tour="hours-hero">
         <div>
           <p>Agenda del salón</p>
           <h2>Horas, reservas y atenciones</h2>
@@ -722,7 +722,7 @@ export default function HoursPanel({
             sin separar la ficha de la clienta de la información financiera.
           </span>
         </div>
-        <button className="admin-primary-button hours-register-cta" type="button" onClick={startNew}>
+        <button className="admin-primary-button hours-register-cta" data-tour="hours-create" type="button" onClick={startNew}>
           <CalendarPlus size={18} aria-hidden="true" />
           Registrar hora
         </button>
@@ -734,7 +734,7 @@ export default function HoursPanel({
             <p>Resumen diario</p>
             <h2>{dateLabel(selectedDate)}</h2>
           </div>
-          <div className="hours-day-nav">
+          <div className="hours-day-nav" data-tour="hours-day-navigation">
             <button type="button" onClick={() => setSelectedDate(moveDate(selectedDate, -1))}>
               Dia anterior
             </button>
@@ -750,7 +750,7 @@ export default function HoursPanel({
           </div>
         </div>
 
-        <div className="hours-summary-grid">
+        <div className="hours-summary-grid" data-tour="hours-summary-metrics">
           <article><CheckCircle2 size={18} /><span>Realizadas</span><strong>{summary.performed}</strong></article>
           <article><Clock size={18} /><span>Pendientes</span><strong>{summary.pending}</strong></article>
           <article><XCircle size={18} /><span>No realizadas</span><strong>{summary.notPerformed}</strong></article>
@@ -759,7 +759,7 @@ export default function HoursPanel({
           <article><ShoppingBag size={18} /><span>Productos</span><strong>{money(summary.productsTotal)}</strong></article>
         </div>
 
-        <div className="hours-daily-table" role="table" aria-label="Resumen diario por hora">
+        <div className="hours-daily-table" data-tour="hours-daily-table" role="table" aria-label="Resumen diario por hora">
           <div className="hours-daily-table-head" role="row">
             <span role="columnheader">Hora</span>
             <span role="columnheader">Clienta</span>
@@ -794,7 +794,7 @@ export default function HoursPanel({
         </div>
       </section>
 
-      <section className="admin-content-card hours-board">
+      <section className="admin-content-card hours-board" data-tour="hours-board">
         <div className="admin-card-heading">
           <div>
             <p>Listado de horas</p>
@@ -806,7 +806,7 @@ export default function HoursPanel({
           </button>
         </div>
 
-        <div className="hours-toolbar">
+        <div className="hours-toolbar" data-tour="hours-filters">
           <label>
             <Search size={16} aria-hidden="true" />
             <input
@@ -845,7 +845,7 @@ export default function HoursPanel({
         </div>
 
         {visibleBookings.length ? (
-          <div className="hours-list">
+          <div className="hours-list" data-tour="hours-list">
             {visibleBookings.map((booking) => (
               <article className={`hours-card is-${attendanceStatusMeta[booking.attendanceStatus].tone}`} key={booking.id}>
                 <div className="hours-card-time">
@@ -878,7 +878,7 @@ export default function HoursPanel({
             ))}
           </div>
         ) : (
-          <div className="admin-empty-state">
+          <div className="admin-empty-state" data-tour="hours-list">
             <Calendar size={28} aria-hidden="true" />
             <h3>No hay horas para los filtros seleccionados</h3>
             <p>Registra una nueva hora o cambia el día, la estilista o el estado.</p>

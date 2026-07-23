@@ -528,13 +528,14 @@ export default function ClientsPanel({
   return (
     <div className="clients-layout">
       {confirmDialog}
-      <section className="clients-directory">
+      <section className="clients-directory" data-tour="clients-directory">
         <div className="admin-card-heading">
           <div>
             <p>Directorio privado</p>
             <h2>{clients.length} clientas</h2>
           </div>
           <AdminButton
+            data-tour="clients-create"
             variant="primary"
             icon={UserPlus}
             type="button"
@@ -543,7 +544,7 @@ export default function ClientsPanel({
             Nueva clienta
           </AdminButton>
         </div>
-        <label className="clients-search">
+        <label className="clients-search" data-tour="clients-search">
           <span>Buscar clienta</span>
           <span className="admin-search-control">
             <Search size={19} aria-hidden="true" />
@@ -555,7 +556,7 @@ export default function ClientsPanel({
             />
           </span>
         </label>
-        <div className="clients-filters" aria-label="Filtros de clientas">
+        <div className="clients-filters" data-tour="clients-filters" aria-label="Filtros de clientas">
           {([
             ['all', 'Todas', UsersRound],
             ['vip', 'VIP', Star],
@@ -573,7 +574,7 @@ export default function ClientsPanel({
             </button>
           ))}
         </div>
-        <div className="clients-list">
+        <div className="clients-list" data-tour="clients-list">
           {filteredClients.map((client) => (
             <button
               className={selectedClient?.id === client.id ? 'is-active' : ''}
@@ -605,7 +606,7 @@ export default function ClientsPanel({
         </div>
       </section>
 
-      <section className="client-profile">
+      <section className="client-profile" data-tour="client-profile">
         {selectedClient ? (
           <>
             <div className="client-profile-header">
@@ -614,7 +615,7 @@ export default function ClientsPanel({
                 <h2>{clientName(selectedClient)}</h2>
                 <span>{selectedClient.active ? 'Ficha activa' : 'Ficha archivada'}</span>
               </div>
-              <div className="client-profile-actions">
+              <div className="client-profile-actions" data-tour="client-profile-actions">
                 <AdminButton
                   icon={Pencil}
                   type="button"
@@ -635,7 +636,7 @@ export default function ClientsPanel({
                 </AdminButton>
               </div>
             </div>
-            <div className="client-contact-grid">
+            <div className="client-contact-grid" data-tour="client-contact">
               <div><span><Phone size={16} aria-hidden="true" /> Teléfono</span><strong>{selectedClient.phone || 'Sin información'}</strong></div>
               <div><span><Cake size={16} aria-hidden="true" /> Cumpleaños</span><strong>{selectedClient.birthday ? formatBirthday(selectedClient.birthday) : 'Sin información'}</strong></div>
               <div><span><MapPin size={16} aria-hidden="true" /> Comuna</span><strong>{selectedClient.commune || 'Sin información'}</strong></div>
@@ -654,7 +655,7 @@ export default function ClientsPanel({
                 <h3>{visits.length} atenciones registradas</h3>
               </div>
             </div>
-            <div className="client-visits">
+            <div className="client-visits" data-tour="client-history">
               {visits.map((visit) => (
                 <article key={visit.id}>
                   <div className="client-visit-date">

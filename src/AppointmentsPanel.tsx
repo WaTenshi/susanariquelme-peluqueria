@@ -1028,7 +1028,7 @@ export default function AppointmentsPanel({
   return (
     <div className="finance-view">
       {confirmDialog}
-      <section className="finance-hero">
+      <section className="finance-hero" data-tour="finance-hero">
         <div>
           <p>Finanzas</p>
           <h2>{money(metrics.total)}</h2>
@@ -1036,7 +1036,7 @@ export default function AppointmentsPanel({
             Servicios {money(metrics.services)} · Productos {money(metrics.products)}
           </span>
         </div>
-        <div className="finance-hero-actions">
+        <div className="finance-hero-actions" data-tour="finance-actions">
           <AdminButton
             variant="primary"
             className="finance-service-cta"
@@ -1057,7 +1057,7 @@ export default function AppointmentsPanel({
         </div>
       </section>
 
-      <div className="finance-toolbar">
+      <div className="finance-toolbar" data-tour="finance-toolbar">
         <span className="admin-search-control">
           <Search size={19} aria-hidden="true" />
           <input
@@ -1072,7 +1072,7 @@ export default function AppointmentsPanel({
             <option value={item} key={item}>{monthLabel(item)}</option>
           ))}
         </select>
-        <div className="finance-view-toggle">
+        <div className="finance-view-toggle" data-tour="finance-view-toggle">
           {([
             ['summary', 'Resumen', ChartNoAxesCombined],
             ['stylists', 'Estilistas', UsersRound],
@@ -1092,7 +1092,7 @@ export default function AppointmentsPanel({
         </div>
       </div>
 
-      <div className="finance-metrics">
+      <div className="finance-metrics" data-tour="finance-metrics">
         <article><span>Total mes</span><strong>{money(metrics.total)}</strong></article>
         <article><span>Servicios</span><strong>{money(metrics.services)}</strong></article>
         <article><span>Productos</span><strong>{money(metrics.products)}</strong></article>
@@ -1101,7 +1101,7 @@ export default function AppointmentsPanel({
 
       {view === 'summary' ? (
         <div className="finance-summary-grid">
-          <section className="admin-content-card finance-chart-card">
+          <section className="admin-content-card finance-chart-card" data-tour="finance-chart">
             <div className="admin-card-heading">
               <div><p>Anual</p><h2>Recaudacion por mes</h2></div>
             </div>
@@ -1116,7 +1116,7 @@ export default function AppointmentsPanel({
             </div>
           </section>
 
-          <section className="admin-content-card finance-team-preview">
+          <section className="admin-content-card finance-team-preview" data-tour="finance-team">
             <div className="admin-card-heading">
               <div><p>Equipo</p><h2>Fichas financieras</h2></div>
               <button className="admin-secondary-button" type="button" onClick={() => setView('stylists')}>
