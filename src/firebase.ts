@@ -90,7 +90,8 @@ const productBenefits = (data: DocumentData) => {
 
   return rawBenefits.reduce<string[]>((benefits, benefit) => {
     if (/^[a-záéíóúüñ]/u.test(benefit) && benefits.length) {
-      benefits[benefits.length - 1] = `${benefits.at(-1)}, ${benefit}`
+      const previousBenefit = benefits[benefits.length - 1]
+      benefits[benefits.length - 1] = `${previousBenefit}, ${benefit}`
     } else {
       benefits.push(benefit)
     }
@@ -123,8 +124,18 @@ export const subscribeToProducts = (
 ): Unsubscribe =>
   onSnapshot(
     query(collection(db, 'products'), orderBy('order', 'asc')),
-    (snapshot) =>
-      onData(snapshot.docs.map((item) => mapProductDocument(item.id, item.data()))),
+    (snapshot) => {
+      const products = snapshot.docs.flatMap((item) => {
+        try {
+          return [mapProductDocument(item.id, item.data())]
+        } catch (error) {
+          console.error(`No se pudo procesar el producto ${item.id}.`, error)
+          return []
+        }
+      })
+
+      onData(products)
+    },
     onError,
   )
 
