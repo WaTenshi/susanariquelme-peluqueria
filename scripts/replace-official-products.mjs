@@ -335,11 +335,20 @@ for (const document of currentInventory) {
 }
 
 for (const { id, inventory, ...product } of products) {
+  const productWithDetails = {
+    ...product,
+    discountPercent: product.discountPercent || 0,
+    images: [product.image],
+    activePrinciples: product.activePrinciples || '',
+    usage: product.usage || '',
+    precautions: product.precautions || '',
+    result: product.result || '',
+  }
   writes.push({
     update: {
       name: `${documentNameRoot}/products/${id}`,
       fields: {
-        ...toFields(product),
+        ...toFields(productWithDetails),
         createdAt: { timestampValue: timestamp },
         updatedAt: { timestampValue: timestamp },
       },
@@ -362,7 +371,7 @@ for (const { id, inventory, ...product } of products) {
         ...toFields({
           entityType: 'product',
           entityId: id,
-          entityName: product.title,
+          entityName: productWithDetails.title,
           action: 'create',
           changes: [
             'Producto oficial agregado al catálogo.',

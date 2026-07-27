@@ -20,6 +20,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   writeBatch,
   type DocumentData,
   type Unsubscribe,
@@ -42,6 +43,8 @@ import type {
   InventorySupplier,
   NewsItem,
   Product,
+  ProductOption,
+  ProductOptionKind,
   ProductSale,
   ServiceCategory,
   ServiceItem,
@@ -68,6 +71,52 @@ void setPersistence(auth, browserLocalPersistence)
 const mapDocument = <T>(id: string, data: DocumentData) =>
   ({ id, ...data }) as T
 
+const productImages = (data: DocumentData) => {
+  const legacyImage = typeof data.image === 'string' ? data.image.trim() : ''
+  const savedImages = Array.isArray(data.images)
+    ? data.images.filter((image): image is string => typeof image === 'string')
+    : []
+
+  return [...new Set([legacyImage, ...savedImages].map((image) => image.trim()).filter(Boolean))]
+}
+
+const productBenefits = (data: DocumentData) => {
+  const rawBenefits = Array.isArray(data.benefits)
+    ? data.benefits
+        .filter((benefit): benefit is string => typeof benefit === 'string')
+        .map((benefit) => benefit.trim())
+        .filter(Boolean)
+    : []
+
+  return rawBenefits.reduce<string[]>((benefits, benefit) => {
+    if (/^[a-záéíóúüñ]/u.test(benefit) && benefits.length) {
+      benefits[benefits.length - 1] = `${benefits.at(-1)}, ${benefit}`
+    } else {
+      benefits.push(benefit)
+    }
+    return benefits
+  }, [])
+}
+
+const mapProductDocument = (id: string, data: DocumentData): Product => {
+  const images = productImages(data)
+
+  return {
+    id,
+    ...data,
+    image: images[0] || '',
+    images,
+    benefits: productBenefits(data),
+    discountPercent:
+      typeof data.discountPercent === 'number' ? data.discountPercent : 0,
+    activePrinciples:
+      typeof data.activePrinciples === 'string' ? data.activePrinciples : '',
+    usage: typeof data.usage === 'string' ? data.usage : '',
+    precautions: typeof data.precautions === 'string' ? data.precautions : '',
+    result: typeof data.result === 'string' ? data.result : '',
+  } as Product
+}
+
 export const subscribeToProducts = (
   onData: (products: Product[]) => void,
   onError?: (error: Error) => void,
@@ -75,9 +124,60 @@ export const subscribeToProducts = (
   onSnapshot(
     query(collection(db, 'products'), orderBy('order', 'asc')),
     (snapshot) =>
-      onData(snapshot.docs.map((item) => mapDocument<Product>(item.id, item.data()))),
+      onData(snapshot.docs.map((item) => mapProductDocument(item.id, item.data()))),
     onError,
   )
+
+const productOptionCollection = (kind: ProductOptionKind) =>
+  kind === 'brand' ? 'productBrands' : 'productCategories'
+
+export const subscribeToProductOptions = (
+  kind: ProductOptionKind,
+  onData: (options: ProductOption[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe =>
+  onSnapshot(
+    query(collection(db, productOptionCollection(kind)), orderBy('name', 'asc')),
+    (snapshot) =>
+      onData(
+        snapshot.docs.map((item) =>
+          mapDocument<ProductOption>(item.id, item.data()),
+        ),
+      ),
+    onError,
+  )
+
+const normalizeProductOptionName = (name: string) =>
+  name
+    .trim()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase('es')
+
+const productOptionId = (name: string) =>
+  normalizeProductOptionName(name)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 120)
+
+export const saveProductOption = async (
+  kind: ProductOptionKind,
+  name: string,
+) => {
+  const trimmedName = name.trim()
+  const id = productOptionId(trimmedName)
+  if (!id) throw new Error('Escribe un nombre válido.')
+
+  await setDoc(
+    doc(db, productOptionCollection(kind), id),
+    {
+      name: trimmedName,
+      normalizedName: normalizeProductOptionName(trimmedName),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  )
+}
 
 export const subscribeToNews = (
   onData: (news: NewsItem[]) => void,
@@ -322,7 +422,27 @@ export const subscribeToAuditLogs = (
   )
 
 const cleanProduct = (product: Product) => {
-  const productData = { ...product }
+  const images = [
+    ...new Set(
+      [product.image, ...(product.images || [])]
+        .map((image) => image.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 10)
+  const productData = {
+    ...product,
+    discountPercent: Math.min(
+      100,
+      Math.max(0, Number(product.discountPercent) || 0),
+    ),
+    image: images[0] || '',
+    images,
+    benefits: product.benefits.map((benefit) => benefit.trim()).filter(Boolean),
+    activePrinciples: product.activePrinciples.trim(),
+    usage: product.usage.trim(),
+    precautions: product.precautions.trim(),
+    result: product.result.trim(),
+  }
   delete productData.id
   return productData
 }
@@ -437,10 +557,16 @@ export const saveProduct = async (product: Product) => {
     brand: 'Marca',
     title: 'Nombre',
     price: 'Precio',
+    discountPercent: 'Descuento',
     image: 'Imagen',
+    images: 'Galería de imágenes',
     category: 'Categoría',
     description: 'Descripción',
     benefits: 'Beneficios',
+    activePrinciples: 'Activos principales',
+    usage: 'Modo de uso',
+    precautions: 'Precauciones',
+    result: 'Resultado',
     size: 'Formato',
     order: 'Orden',
     active: 'Visible',

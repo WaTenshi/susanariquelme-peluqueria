@@ -13,23 +13,53 @@ service cloud.firestore {
           'benefits', 'size', 'order', 'active'
         ])
         && request.resource.data.brand is string
-        && request.resource.data.brand.size() <= 100
+        && request.resource.data.brand.size() <= 200
         && request.resource.data.title is string
-        && request.resource.data.title.size() <= 180
+        && request.resource.data.title.size() <= 300
         && request.resource.data.price is string
-        && request.resource.data.price.size() <= 30
+        && request.resource.data.price.size() <= 100
+        && (!('discountPercent' in request.resource.data)
+          || (request.resource.data.discountPercent is number
+            && request.resource.data.discountPercent >= 0
+            && request.resource.data.discountPercent <= 100))
         && request.resource.data.image is string
-        && request.resource.data.image.size() <= 2000
+        && request.resource.data.image.size() <= 4000
+        && (!('images' in request.resource.data)
+          || (request.resource.data.images is list
+            && request.resource.data.images.size() > 0
+            && request.resource.data.images.size() <= 10))
         && request.resource.data.category is string
-        && request.resource.data.category.size() <= 100
+        && request.resource.data.category.size() <= 200
         && request.resource.data.description is string
-        && request.resource.data.description.size() <= 2000
+        && request.resource.data.description.size() <= 10000
         && request.resource.data.benefits is list
-        && request.resource.data.benefits.size() <= 10
+        && request.resource.data.benefits.size() <= 100
+        && (!('activePrinciples' in request.resource.data)
+          || (request.resource.data.activePrinciples is string
+            && request.resource.data.activePrinciples.size() <= 10000))
+        && (!('usage' in request.resource.data)
+          || (request.resource.data.usage is string
+            && request.resource.data.usage.size() <= 10000))
+        && (!('precautions' in request.resource.data)
+          || (request.resource.data.precautions is string
+            && request.resource.data.precautions.size() <= 10000))
+        && (!('result' in request.resource.data)
+          || (request.resource.data.result is string
+            && request.resource.data.result.size() <= 10000))
         && request.resource.data.size is string
-        && request.resource.data.size.size() <= 80
+        && request.resource.data.size.size() <= 200
         && request.resource.data.order is number
         && request.resource.data.active is bool;
+    }
+
+    function validProductOption() {
+      return request.resource.data.keys().hasAll(['name', 'normalizedName'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.normalizedName is string
+        && request.resource.data.normalizedName.size() > 0
+        && request.resource.data.normalizedName.size() <= 200;
     }
 
     function validNews() {
@@ -390,6 +420,18 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isAdmin() && validProduct();
       allow delete: if isAdmin();
+    }
+
+    match /productBrands/{brandId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validProductOption();
+      allow delete: if false;
+    }
+
+    match /productCategories/{categoryId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validProductOption();
+      allow delete: if false;
     }
 
     match /news/{newsId} {

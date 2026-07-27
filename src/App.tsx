@@ -1,14 +1,19 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Grid2x2,
   Grid3x3,
   Rows3,
   Sparkles,
+  X,
+  ZoomIn,
 } from 'lucide-react'
 import './App.css'
 import {
@@ -77,6 +82,299 @@ const hasVisibleProductPrice = (price: string) => {
 
 const productPriceLabel = (price: string) =>
   hasVisibleProductPrice(price) ? price : 'Consultar'
+
+const productDiscount = (product: Product) =>
+  Math.min(100, Math.max(0, Number(product.discountPercent) || 0))
+
+const productPricing = (product: Product) => {
+  const priceLabel = productPriceLabel(product.price)
+  const matches = product.price.match(/\d[\d.]*/g) || []
+  const amount =
+    matches.length === 1 ? Number(matches[0].replace(/\D/g, '')) : 0
+  const discount = productDiscount(product)
+
+  if (!amount || !discount || !hasVisibleProductPrice(product.price)) {
+    return {
+      hasDiscount: false,
+      currentLabel: priceLabel,
+      originalLabel: '',
+      discount,
+    }
+  }
+
+  const prefix = /^\s*desde\b/i.test(product.price) ? 'Desde ' : ''
+  const discountedAmount = Math.round(amount * (1 - discount / 100))
+
+  return {
+    hasDiscount: true,
+    currentLabel: `${prefix}$${discountedAmount.toLocaleString('es-CL')}`,
+    originalLabel: priceLabel,
+    discount,
+  }
+}
+
+function ProductPrice({
+  product,
+  variant = 'card',
+}: {
+  product: Product
+  variant?: 'card' | 'modal'
+}) {
+  const pricing = productPricing(product)
+
+  return (
+    <div
+      className={`product-price-display is-${variant} ${pricing.hasDiscount ? 'has-discount' : ''}`}
+      aria-label={
+        pricing.hasDiscount
+          ? `Precio oferta ${pricing.currentLabel}; precio anterior ${pricing.originalLabel}; ${pricing.discount}% de descuento`
+          : `Precio ${pricing.currentLabel}`
+      }
+    >
+      {pricing.hasDiscount ? (
+        <span className="product-price-original">{pricing.originalLabel}</span>
+      ) : null}
+      <strong>{pricing.currentLabel}</strong>
+      {pricing.hasDiscount ? (
+        <span className="product-price-discount">-{pricing.discount}%</span>
+      ) : null}
+    </div>
+  )
+}
+
+const getProductImages = (product: Product) => [
+  ...new Set(
+    [product.image, ...(product.images || [])]
+      .map((image) => image.trim())
+      .filter(Boolean),
+  ),
+]
+
+function ProductGallery({ product }: { product: Product }) {
+  const images = getProductImages(product)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [isZoomOpen, setIsZoomOpen] = useState(false)
+  const activeImage = images[activeIndex] || product.image
+
+  useEffect(() => {
+    if (!isZoomOpen) return
+
+    const closeZoomOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      setIsZoomOpen(false)
+    }
+
+    window.addEventListener('keydown', closeZoomOnEscape, true)
+    return () => window.removeEventListener('keydown', closeZoomOnEscape, true)
+  }, [isZoomOpen])
+
+  const showPrevious = () =>
+    setActiveIndex((current) => (current - 1 + images.length) % images.length)
+  const showNext = () =>
+    setActiveIndex((current) => (current + 1) % images.length)
+
+  return (
+    <>
+      <div className="product-modal-gallery">
+        <button
+          className="product-modal-main-image"
+          type="button"
+          onClick={() => setIsZoomOpen(true)}
+          aria-label={`Ampliar imagen ${activeIndex + 1} de ${product.title}`}
+        >
+          <ContentImage
+            source={activeImage}
+            alt={`${product.title}, imagen ${activeIndex + 1}`}
+            mode="detail"
+          />
+          <span><ZoomIn size={18} aria-hidden="true" /> Ampliar</span>
+        </button>
+
+        {images.length > 1 ? (
+          <div className="product-thumbnails" aria-label="Galería del producto">
+            {images.map((image, index) => (
+              <button
+                className={`product-thumbnail ${index === activeIndex ? 'is-active' : ''}`}
+                type="button"
+                key={image}
+                onClick={() => setActiveIndex(index)}
+                aria-label={`Ver imagen ${index + 1} de ${product.title}`}
+                aria-pressed={index === activeIndex}
+              >
+                <ContentImage source={image} alt="" mode="preview" />
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {isZoomOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="product-lightbox"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Imagen ampliada de ${product.title}`}
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) setIsZoomOpen(false)
+              }}
+            >
+              <button
+                className="product-lightbox-close"
+                type="button"
+                onClick={() => setIsZoomOpen(false)}
+                aria-label="Cerrar imagen ampliada"
+              >
+                <X aria-hidden="true" />
+              </button>
+              {images.length > 1 ? (
+                <button
+                  className="product-lightbox-arrow is-previous"
+                  type="button"
+                  onClick={showPrevious}
+                  aria-label="Ver imagen anterior"
+                >
+                  <ChevronLeft aria-hidden="true" />
+                </button>
+              ) : null}
+              <ContentImage
+                source={activeImage}
+                alt={`${product.title}, imagen ampliada ${activeIndex + 1}`}
+                mode="detail"
+              />
+              {images.length > 1 ? (
+                <>
+                  <button
+                    className="product-lightbox-arrow is-next"
+                    type="button"
+                    onClick={showNext}
+                    aria-label="Ver imagen siguiente"
+                  >
+                    <ChevronRight aria-hidden="true" />
+                  </button>
+                  <span className="product-lightbox-count">
+                    {activeIndex + 1} / {images.length}
+                  </span>
+                </>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  )
+}
+
+function ProductDetails({ product }: { product: Product }) {
+  const detailSections = [
+    {
+      label: 'Beneficios',
+      content: product.benefits,
+      isList: true,
+    },
+    {
+      label: 'Activos principales',
+      content: product.activePrinciples,
+    },
+    {
+      label: 'Modo de uso',
+      content: product.usage,
+    },
+    {
+      label: 'Precauciones',
+      content: product.precautions,
+    },
+    {
+      label: 'Resultado',
+      content: product.result,
+    },
+  ]
+
+  return (
+    <div className="product-details">
+      {detailSections.map((section) => {
+        const hasContent = Array.isArray(section.content)
+          ? section.content.length > 0
+          : section.content.trim().length > 0
+
+        if (!hasContent) return null
+
+        return (
+          <details key={section.label}>
+            <summary>
+              <span>{section.label}</span>
+              <ChevronDown size={18} aria-hidden="true" />
+            </summary>
+            <div className="product-detail-content">
+              {section.isList && Array.isArray(section.content) ? (
+                <ul>
+                  {section.content.map((benefit) => (
+                    <li key={benefit}>{benefit}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>{section.content as string}</p>
+              )}
+            </div>
+          </details>
+        )
+      })}
+    </div>
+  )
+}
+
+function ProductModalInfo({
+  product,
+  titleId,
+}: {
+  product: Product
+  titleId: string
+}) {
+  return (
+    <div className="product-modal-info">
+      <div className="product-modal-scroll-content">
+        <div className="product-modal-heading">
+          <p className="product-modal-brand">{product.brand}</p>
+          <h2 id={titleId}>{product.title}</h2>
+          <p className="product-modal-category">
+            {product.category} · {product.size}
+          </p>
+          <ProductPrice product={product} variant="modal" />
+          {product.description ? (
+            <p className="product-modal-description">{product.description}</p>
+          ) : null}
+        </div>
+
+        <ProductDetails product={product} />
+      </div>
+
+      <div className="product-modal-actions">
+        <a
+          className="button product-buy-button"
+          href={whatsappHref(
+            `Hola Susana Riquelme Peluquería, me interesa ${product.title}.`,
+          )}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() =>
+            trackSiteEvent('product_whatsapp', {
+              itemId: product.id || product.title,
+              itemName: product.title,
+              section: product.category,
+            })
+          }
+        >
+          Escribir por WhatsApp
+        </a>
+        <small>
+          Confirmaremos stock y valor final antes de coordinar la compra.
+        </small>
+      </div>
+    </div>
+  )
+}
 
 const brandLogos = [
   { name: 'TRUSS Professional', image: trussLogo },
@@ -651,6 +949,10 @@ function Landing() {
         product.category,
         product.description,
         ...product.benefits,
+        product.activePrinciples,
+        product.usage,
+        product.precautions,
+        product.result,
       ].join(' ')
       const normalizedSearchableText = normalizeSearchText(searchableText)
 
@@ -1182,6 +1484,11 @@ function Landing() {
               <article className="product-card" key={product.title}>
                 <div className="product-image-wrap">
                   <span className="product-category">{product.category}</span>
+                  {productDiscount(product) > 0 ? (
+                    <span className="product-discount-badge">
+                      -{productDiscount(product)}%
+                    </span>
+                  ) : null}
                   <ContentImage source={product.image} alt={product.title} />
                 </div>
                 <div className="product-body">
@@ -1189,7 +1496,7 @@ function Landing() {
                   <h3>{product.title}</h3>
                   <span className="product-size">{product.size}</span>
                   <div className="product-footer">
-                    <strong>{productPriceLabel(product.price)}</strong>
+                    <ProductPrice product={product} />
                     <button
                       className="buy-link"
                       type="button"
@@ -1706,64 +2013,12 @@ function Landing() {
               ×
             </button>
 
-            <div className="product-modal-gallery">
-              <div className="product-modal-main-image">
-                <ContentImage
-                  source={selectedProduct.image}
-                  alt={selectedProduct.title}
-                  mode="detail"
-                />
-              </div>
-              <button className="product-thumbnail is-active" type="button" aria-label="Vista principal">
-                <ContentImage
-                  source={selectedProduct.image}
-                  alt=""
-                  mode="preview"
-                />
-              </button>
-            </div>
+            <ProductGallery product={selectedProduct} />
 
-            <div className="product-modal-info">
-              <p className="product-modal-brand">{selectedProduct.brand}</p>
-              <h2 id="product-modal-title">{selectedProduct.title}</h2>
-              <p className="product-modal-category">
-                {selectedProduct.category} · {selectedProduct.size}
-              </p>
-              {hasVisibleProductPrice(selectedProduct.price) ? (
-                <strong className="product-modal-price">{selectedProduct.price}</strong>
-              ) : null}
-              <p className="product-modal-description">{selectedProduct.description}</p>
-
-              <div className="product-benefits">
-                <p>Por que te encantara</p>
-                <ul>
-                  {selectedProduct.benefits.map((benefit) => (
-                    <li key={benefit}>{benefit}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <a
-                className="button product-buy-button"
-                href={whatsappHref(
-                  `Hola Susana Riquelme Peluquería, me interesa ${selectedProduct.title}.`,
-                )}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() =>
-                  trackSiteEvent('product_whatsapp', {
-                    itemId: selectedProduct.id || selectedProduct.title,
-                    itemName: selectedProduct.title,
-                    section: selectedProduct.category,
-                  })
-                }
-              >
-                Escribir por WhatsApp
-              </a>
-              <small>
-                Confirmaremos stock y valor final antes de coordinar la compra.
-              </small>
-            </div>
+            <ProductModalInfo
+              product={selectedProduct}
+              titleId="product-modal-title"
+            />
           </section>
         </div>
       ) : null}
@@ -2057,6 +2312,10 @@ function ProductsStorePage() {
         product.description,
         product.size,
         ...product.benefits,
+        product.activePrinciples,
+        product.usage,
+        product.precautions,
+        product.result,
       ].join(' ')
 
       return (
@@ -2276,6 +2535,11 @@ function ProductsStorePage() {
                         aria-label={`Ver ${product.title}`}
                       >
                         <span>{product.category}</span>
+                        {productDiscount(product) > 0 ? (
+                          <span className="product-discount-badge">
+                            -{productDiscount(product)}%
+                          </span>
+                        ) : null}
                         <ContentImage source={product.image} alt={product.title} />
                       </button>
                       <div className="store-product-body">
@@ -2283,7 +2547,7 @@ function ProductsStorePage() {
                         <h2>{product.title}</h2>
                         <span>{product.size}</span>
                         <div className="store-product-footer">
-                          <strong>{productPriceLabel(product.price)}</strong>
+                          <ProductPrice product={product} />
                           <button type="button" onClick={() => openStoreProduct(product)}>
                             {storeGridColumns === 1 ? 'Ver producto' : 'Ver'}
                           </button>
@@ -2330,64 +2594,12 @@ function ProductsStorePage() {
               ×
             </button>
 
-            <div className="product-modal-gallery">
-              <div className="product-modal-main-image">
-                <ContentImage
-                  source={selectedProduct.image}
-                  alt={selectedProduct.title}
-                  mode="detail"
-                />
-              </div>
-              <button className="product-thumbnail is-active" type="button" aria-label="Vista principal">
-                <ContentImage
-                  source={selectedProduct.image}
-                  alt=""
-                  mode="preview"
-                />
-              </button>
-            </div>
+            <ProductGallery product={selectedProduct} />
 
-            <div className="product-modal-info">
-              <p className="product-modal-brand">{selectedProduct.brand}</p>
-              <h2 id="store-product-modal-title">{selectedProduct.title}</h2>
-              <p className="product-modal-category">
-                {selectedProduct.category} · {selectedProduct.size}
-              </p>
-              <strong className="product-modal-price">
-                {productPriceLabel(selectedProduct.price)}
-              </strong>
-              <p className="product-modal-description">{selectedProduct.description}</p>
-
-              <div className="product-benefits">
-                <p>Por que te encantara</p>
-                <ul>
-                  {selectedProduct.benefits.map((benefit) => (
-                    <li key={benefit}>{benefit}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <a
-                className="button product-buy-button"
-                href={whatsappHref(
-                  `Hola Susana Riquelme Peluquería, me interesa ${selectedProduct.title}.`,
-                )}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() =>
-                  trackSiteEvent('product_whatsapp', {
-                    itemId: selectedProduct.id || selectedProduct.title,
-                    itemName: selectedProduct.title,
-                    section: selectedProduct.category,
-                  })
-                }
-              >
-                Escribir por WhatsApp
-              </a>
-              <small>
-                Confirmaremos stock y valor final antes de coordinar la compra.
-              </small>
-            </div>
+            <ProductModalInfo
+              product={selectedProduct}
+              titleId="store-product-modal-title"
+            />
           </section>
         </div>
       ) : null}

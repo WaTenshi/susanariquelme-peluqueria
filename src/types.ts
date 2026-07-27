@@ -3,13 +3,27 @@ export type Product = {
   brand: string
   title: string
   price: string
+  discountPercent: number
   image: string
+  images: string[]
   category: string
   description: string
   benefits: string[]
+  activePrinciples: string
+  usage: string
+  precautions: string
+  result: string
   size: string
   order: number
   active: boolean
+}
+
+export type ProductOptionKind = 'brand' | 'category'
+
+export type ProductOption = {
+  id?: string
+  name: string
+  normalizedName: string
 }
 
 export type ServiceItem = {

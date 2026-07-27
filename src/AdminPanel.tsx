@@ -34,6 +34,7 @@ import {
   removeServiceItem,
   saveNewsItem,
   saveProduct,
+  saveProductOption,
   saveServiceCategory,
   saveServiceItem,
   subscribeToAuditLogs,
@@ -49,6 +50,7 @@ import {
   subscribeToInventorySuppliers,
   subscribeToNews,
   subscribeToProducts,
+  subscribeToProductOptions,
   subscribeToServiceCategories,
   subscribeToServiceItems,
   subscribeToStylists,
@@ -66,6 +68,8 @@ import type {
   InventorySupplier,
   NewsItem,
   Product,
+  ProductOption,
+  ProductOptionKind,
   ServiceCategory,
   ServiceItem,
   SiteEvent,
@@ -101,10 +105,16 @@ const emptyProduct = (order = 1): Product => ({
   brand: '',
   title: '',
   price: '',
+  discountPercent: 0,
   image: '',
+  images: [],
   category: '',
   description: '',
   benefits: [],
+  activePrinciples: '',
+  usage: '',
+  precautions: '',
+  result: '',
   size: '',
   order,
   active: true,
@@ -165,7 +175,7 @@ const getFriendlyErrorMessage = (error: unknown) => {
     return 'Acceso bloqueado temporalmente por demasiados intentos.'
   }
   if (code.includes('permission-denied')) {
-    return 'Tu cuenta no tiene permisos para realizar esta operación.'
+    return 'El servidor rechazó el guardado. Revisa los datos del producto e intenta nuevamente.'
   }
   return 'No fue posible completar la operación. Intenta nuevamente.'
 }
@@ -256,12 +266,123 @@ function AdminLogin() {
 
 type ProductFormProps = {
   product: Product
+  brandOptions: string[]
+  categoryOptions: string[]
   onChange: (product: Product) => void
   onCancel: () => void
   onSaved: () => void
 }
 
-function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps) {
+type ProductOptionFieldProps = {
+  label: string
+  optionKind: ProductOptionKind
+  value: string
+  options: string[]
+  onChange: (value: string) => void
+}
+
+function ProductOptionField({
+  label,
+  optionKind,
+  value,
+  options,
+  onChange,
+}: ProductOptionFieldProps) {
+  const [isCreating, setIsCreating] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const singularLabel = optionKind === 'brand' ? 'marca' : 'categoría'
+
+  const createOption = async () => {
+    const name = draft.trim()
+    if (!name) {
+      setError(`Escribe el nombre de la ${singularLabel}.`)
+      return
+    }
+
+    setError('')
+    setIsSaving(true)
+    try {
+      await saveProductOption(optionKind, name)
+      onChange(name)
+      setDraft('')
+      setIsCreating(false)
+    } catch (saveError) {
+      setError(getFriendlyErrorMessage(saveError))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="admin-option-field">
+      <label>
+        {label}
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          required
+        >
+          <option value="">Seleccionar {singularLabel}</option>
+          {options.map((option) => (
+            <option value={option} key={option}>{option}</option>
+          ))}
+        </select>
+      </label>
+      {isCreating ? (
+        <div className="admin-option-create">
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void createOption()
+              }
+            }}
+            placeholder={`Nueva ${singularLabel}`}
+            aria-label={`Nombre de la nueva ${singularLabel}`}
+            maxLength={200}
+            autoFocus
+          />
+          <button type="button" onClick={() => void createOption()} disabled={isSaving}>
+            {isSaving ? 'Guardando...' : 'Agregar'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsCreating(false)
+              setDraft('')
+              setError('')
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <button
+          className="admin-option-add"
+          type="button"
+          onClick={() => setIsCreating(true)}
+        >
+          <Plus size={15} aria-hidden="true" />
+          Crear nueva {singularLabel}
+        </button>
+      )}
+      {error ? <small className="admin-option-error">{error}</small> : null}
+    </div>
+  )
+}
+
+function ProductForm({
+  product,
+  brandOptions,
+  categoryOptions,
+  onChange,
+  onCancel,
+  onSaved,
+}: ProductFormProps) {
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -270,12 +391,47 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
   const update = <K extends keyof Product>(key: K, value: Product[K]) =>
     onChange({ ...product, [key]: value })
 
-  const handleImage = async (file?: File) => {
-    if (!file) return
+  const galleryImages = [
+    ...new Set(
+      [product.image, ...(product.images || [])]
+        .map((image) => image.trim())
+        .filter(Boolean),
+    ),
+  ]
+
+  const updateImages = (images: string[]) => {
+    const normalizedImages = [
+      ...new Set(images.map((image) => image.trim()).filter(Boolean)),
+    ].slice(0, 10)
+
+    onChange({
+      ...product,
+      image: normalizedImages[0] || '',
+      images: normalizedImages,
+    })
+  }
+
+  const handleImages = async (files?: FileList | null) => {
+    if (!files?.length) return
+    const selectedFiles = Array.from(files)
+    const availableSlots = 10 - galleryImages.length
+
+    if (selectedFiles.length > availableSlots) {
+      setError(
+        availableSlots > 0
+          ? `Puedes agregar ${availableSlots} ${availableSlots === 1 ? 'imagen más' : 'imágenes más'}.`
+          : 'Este producto ya tiene el máximo de 10 imágenes.',
+      )
+      return
+    }
+
     setError('')
     setIsUploading(true)
     try {
-      update('image', await uploadContentImage(file))
+      const uploadedImages = await Promise.all(
+        selectedFiles.map((file) => uploadContentImage(file)),
+      )
+      updateImages([...galleryImages, ...uploadedImages])
     } catch (uploadError) {
       setError(getFriendlyErrorMessage(uploadError))
     } finally {
@@ -312,14 +468,20 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
           Nombre
           <input value={product.title} onChange={(e) => update('title', e.target.value)} required maxLength={180} />
         </label>
-        <label>
-          Marca
-          <input value={product.brand} onChange={(e) => update('brand', e.target.value)} required maxLength={100} />
-        </label>
-        <label>
-          Categoría
-          <input value={product.category} onChange={(e) => update('category', e.target.value)} required maxLength={100} />
-        </label>
+        <ProductOptionField
+          label="Marca"
+          optionKind="brand"
+          value={product.brand}
+          options={brandOptions}
+          onChange={(value) => update('brand', value)}
+        />
+        <ProductOptionField
+          label="Categoría"
+          optionKind="category"
+          value={product.category}
+          options={categoryOptions}
+          onChange={(value) => update('category', value)}
+        />
         <AdminField
           label="Precio"
           icon={CircleDollarSign}
@@ -335,6 +497,23 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
           />
         </AdminField>
         <label>
+          Descuento (%)
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            value={product.discountPercent}
+            onChange={(event) =>
+              update(
+                'discountPercent',
+                Math.min(100, Math.max(0, Number(event.target.value) || 0)),
+              )
+            }
+          />
+          <small>Usa 0 para mostrar el precio normal.</small>
+        </label>
+        <label>
           Formato
           <input value={product.size} onChange={(e) => update('size', e.target.value)} placeholder="500 ml" required maxLength={80} />
         </label>
@@ -347,43 +526,126 @@ function ProductForm({ product, onChange, onCancel, onSaved }: ProductFormProps)
           Visible en la web
         </label>
         <label className="is-wide">
-          Descripción
-          <textarea value={product.description} onChange={(e) => update('description', e.target.value)} required maxLength={2000} />
+          Descripción breve (opcional)
+          <textarea value={product.description} onChange={(e) => update('description', e.target.value)} maxLength={2000} />
         </label>
         <label className="is-wide">
           Beneficios
-          <input
-            value={product.benefits.join(', ')}
+          <textarea
+            value={product.benefits.join('\n')}
             onChange={(e) =>
               update(
                 'benefits',
-                e.target.value.split(',').map((value) => value.trim()).filter(Boolean),
+                e.target.value.split('\n').map((value) => value.trim()).filter(Boolean),
               )
             }
-            placeholder="Brillo, suavidad, control de frizz"
+            placeholder={'Aporta brillo\nMejora la suavidad\nAyuda a controlar el frizz'}
+            maxLength={3000}
+          />
+          <small>Escribe un beneficio por línea.</small>
+        </label>
+        <label className="is-wide">
+          Activos principales
+          <textarea
+            value={product.activePrinciples}
+            onChange={(e) => update('activePrinciples', e.target.value)}
+            placeholder="Ej.: aminoácidos, queratina y extractos vegetales."
+            maxLength={3000}
           />
         </label>
         <label className="is-wide">
-          URL de imagen
-          <input value={product.image} onChange={(e) => update('image', e.target.value)} required />
+          Modo de uso
+          <textarea
+            value={product.usage}
+            onChange={(e) => update('usage', e.target.value)}
+            placeholder="Explica cómo y con qué frecuencia aplicar el producto."
+            maxLength={3000}
+          />
+        </label>
+        <label className="is-wide">
+          Precauciones
+          <textarea
+            value={product.precautions}
+            onChange={(e) => update('precautions', e.target.value)}
+            placeholder="Indica advertencias, restricciones o cuidados importantes."
+            maxLength={3000}
+          />
+        </label>
+        <label className="is-wide">
+          Resultado
+          <textarea
+            value={product.result}
+            onChange={(e) => update('result', e.target.value)}
+            placeholder="Describe el acabado o resultado esperado."
+            maxLength={3000}
+          />
+        </label>
+        <label className="is-wide">
+          URLs o identificadores de imágenes
+          <textarea
+            value={galleryImages.join('\n')}
+            onChange={(e) => updateImages(e.target.value.split('\n'))}
+            placeholder={'https://...\nsusana-riquelme/catalogo/...'}
+            required
+          />
+          <small>Una imagen por línea. La primera será la imagen principal.</small>
         </label>
         <label className="admin-file-field is-wide">
-          <span><ImagePlus size={18} aria-hidden="true" /> O subir una imagen</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => void handleImage(e.target.files?.[0])} />
+          <span><ImagePlus size={18} aria-hidden="true" /> O subir varias imágenes</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onChange={(e) => void handleImages(e.target.files)}
+          />
           <span>
             {isUploading
-              ? 'Optimizando y subiendo imagen...'
-              : 'JPG, PNG o WebP, máximo 1 MB'}
+              ? 'Optimizando y subiendo imágenes...'
+              : `${galleryImages.length}/10 imágenes · JPG, PNG o WebP, máximo 1 MB cada una`}
           </span>
         </label>
       </div>
-      {product.image ? (
-        <ContentImage
-          className="admin-image-preview"
-          source={product.image}
-          alt=""
-          mode="preview"
-        />
+      {galleryImages.length ? (
+        <div className="admin-product-images" aria-label="Imágenes del producto">
+          {galleryImages.map((image, index) => (
+            <article key={image}>
+              <ContentImage
+                className="admin-image-preview"
+                source={image}
+                alt={`Vista ${index + 1} de ${product.title || 'producto'}`}
+                mode="preview"
+              />
+              <span>{index === 0 ? 'Principal' : `Imagen ${index + 1}`}</span>
+              <div>
+                {index > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateImages([
+                        image,
+                        ...galleryImages.filter((currentImage) => currentImage !== image),
+                      ])
+                    }
+                  >
+                    Hacer principal
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateImages(
+                      galleryImages.filter((currentImage) => currentImage !== image),
+                    )
+                  }
+                  aria-label={`Eliminar imagen ${index + 1}`}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                  Eliminar
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
       ) : null}
       {error ? <p className="admin-error" role="alert">{error}</p> : null}
       <div className="admin-form-actions">
@@ -947,6 +1209,8 @@ export default function AdminPanel() {
   const [authReady, setAuthReady] = useState(false)
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [products, setProducts] = useState<Product[]>([])
+  const [savedProductBrands, setSavedProductBrands] = useState<ProductOption[]>([])
+  const [savedProductCategories, setSavedProductCategories] = useState<ProductOption[]>([])
   const [news, setNews] = useState<NewsItem[]>([])
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([])
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([])
@@ -1104,6 +1368,16 @@ export default function AdminPanel() {
       setDataError('')
     }
     const unsubProducts = subscribeToProducts(handleProducts, handleError)
+    const unsubProductBrands = subscribeToProductOptions(
+      'brand',
+      setSavedProductBrands,
+      handleError,
+    )
+    const unsubProductCategories = subscribeToProductOptions(
+      'category',
+      setSavedProductCategories,
+      handleError,
+    )
     const unsubNews = subscribeToNews(handleNews, handleError)
     const unsubServiceCategories = subscribeToServiceCategories(
       handleServiceCategories,
@@ -1127,6 +1401,8 @@ export default function AdminPanel() {
     const unsubAudit = subscribeToAuditLogs(handleAudit, handleError)
     return () => {
       unsubProducts()
+      unsubProductBrands()
+      unsubProductCategories()
       unsubNews()
       unsubServiceCategories()
       unsubServiceItems()
@@ -1144,6 +1420,32 @@ export default function AdminPanel() {
       unsubAudit()
     }
   }, [user])
+
+  const productBrandOptions = useMemo(
+    () =>
+      [
+        ...new Set([
+          ...products.map((product) => product.brand.trim()),
+          ...savedProductBrands.map((option) => option.name.trim()),
+        ]),
+      ]
+        .filter(Boolean)
+        .sort((first, second) => first.localeCompare(second, 'es')),
+    [products, savedProductBrands],
+  )
+
+  const productCategoryOptions = useMemo(
+    () =>
+      [
+        ...new Set([
+          ...products.map((product) => product.category.trim()),
+          ...savedProductCategories.map((option) => option.name.trim()),
+        ]),
+      ]
+        .filter(Boolean)
+        .sort((first, second) => first.localeCompare(second, 'es')),
+    [products, savedProductCategories],
+  )
 
   const visibleAppointments = appointments
 
@@ -1346,6 +1648,8 @@ export default function AdminPanel() {
           productDraft ? (
             <ProductForm
               product={productDraft}
+              brandOptions={productBrandOptions}
+              categoryOptions={productCategoryOptions}
               onChange={setProductDraft}
               onCancel={() => setProductDraft(null)}
               onSaved={() => {
