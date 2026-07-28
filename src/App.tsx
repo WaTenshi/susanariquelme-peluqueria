@@ -44,6 +44,10 @@ import trussLogo from './assets/TRUSS-Professional-Branco-opt.webp'
 import mariaJosePhoto from './assets/MARIAJOSE.jpeg'
 import moiraPhoto from './assets/MOIRA.jpeg'
 import claudiaPhoto from './assets/CLAUDIA.jpeg'
+import hairModelShort from './assets/hair-model-short-transparent.webp'
+import hairModelMedium from './assets/hair-model-medium-transparent.webp'
+import hairModelLong from './assets/hair-model-long-transparent.webp'
+import hairModelExtraLong from './assets/hair-model-extra-long-transparent.webp'
 
 const AdminPanel = lazy(() => import('./AdminPanel'))
 
@@ -586,6 +590,36 @@ const getHairLength = (name: string) => {
   return 'short'
 }
 
+type HairLength = ReturnType<typeof getHairLength>
+
+const hairModelImages: Record<HairLength, string> = {
+  short: hairModelShort,
+  medium: hairModelMedium,
+  long: hairModelLong,
+  'extra-long': hairModelExtraLong,
+}
+
+function HairLengthModel({ length }: { length: HairLength }) {
+  return (
+    <div className="hair-model-photo-stack">
+      {(Object.entries(hairModelImages) as [HairLength, string][]).map(
+        ([imageLength, source]) => (
+          <img
+            className={`hair-model-photo${imageLength === length ? ' is-active' : ''}`}
+            src={source}
+            alt=""
+            width="900"
+            height="1220"
+            decoding="async"
+            draggable="false"
+            key={imageLength}
+          />
+        ),
+      )}
+    </div>
+  )
+}
+
 type SmoothingServiceCardProps = {
   group: ServiceCategory
   onBook: (service?: string) => void
@@ -601,6 +635,7 @@ function SmoothingServiceCard({ group, onBook }: SmoothingServiceCardProps) {
   if (!selectedItem) return null
 
   const selectedService = `${group.title} - ${selectedItem.name} (${selectedItem.price})`
+  const selectedHairLength = getHairLength(selectedItem.name)
 
   return (
     <section
@@ -665,18 +700,19 @@ function SmoothingServiceCard({ group, onBook }: SmoothingServiceCardProps) {
           </div>
           <div
             className="hair-stage"
-            data-length={getHairLength(selectedItem.name)}
+            data-length={selectedHairLength}
             aria-hidden="true"
           >
-            <div className="hair-guide hair-guide-short"><span>Corto</span></div>
-            <div className="hair-guide hair-guide-medium"><span>Medio</span></div>
+            <div className="hair-guide hair-guide-short">
+              <span>Corto</span>
+            </div>
+            <div className="hair-guide hair-guide-medium">
+              <span>Medio</span>
+            </div>
             <div className="hair-guide hair-guide-long"><span>Largo</span></div>
             <div className="hair-guide hair-guide-extra"><span>Extra largo</span></div>
             <div className="hair-model">
-              <div className="hair-model-head" />
-              <div className="hair-model-neck" />
-              <div className="hair-model-body" />
-              <div className="hair-shape" />
+              <HairLengthModel length={selectedHairLength} />
             </div>
           </div>
           <div className="hair-selection-summary" aria-live="polite">
