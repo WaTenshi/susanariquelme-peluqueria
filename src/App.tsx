@@ -1,7 +1,16 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
-  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   Check,
@@ -26,6 +35,13 @@ import {
 import type { NewsItem, Product, ServiceCategory, ServiceItem } from './types'
 import ContentImage from './ContentImage'
 import { initialServiceCategories } from './servicesContent'
+import {
+  findProductByLocator,
+  normalizeSearchText,
+  productDetailHref,
+  productLocator,
+  relatedProductsFor,
+} from './catalog-utils'
 
 import brazilianLogo from './assets/eef019e6-2c79-4ceb-ae07-f48716d5bb3f.png'
 import glattenLogo from './assets/glatten-professional-logo.png'
@@ -65,12 +81,6 @@ const storeGridOptions = [
 
 const whatsappHref = (message: string) =>
   `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
-
-const normalizeSearchText = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLocaleLowerCase('es')
 
 const formatNewsDate = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
@@ -271,64 +281,6 @@ function ProductGallery({ product }: { product: Product }) {
   )
 }
 
-function ProductDetails({ product }: { product: Product }) {
-  const detailSections = [
-    {
-      label: 'Beneficios',
-      content: product.benefits,
-      isList: true,
-    },
-    {
-      label: 'Activos principales',
-      content: product.activePrinciples,
-    },
-    {
-      label: 'Modo de uso',
-      content: product.usage,
-    },
-    {
-      label: 'Precauciones',
-      content: product.precautions,
-    },
-    {
-      label: 'Resultado',
-      content: product.result,
-    },
-  ]
-
-  return (
-    <div className="product-details">
-      {detailSections.map((section) => {
-        const hasContent = Array.isArray(section.content)
-          ? section.content.length > 0
-          : section.content.trim().length > 0
-
-        if (!hasContent) return null
-
-        return (
-          <details key={section.label}>
-            <summary>
-              <span>{section.label}</span>
-              <ChevronDown size={18} aria-hidden="true" />
-            </summary>
-            <div className="product-detail-content">
-              {section.isList && Array.isArray(section.content) ? (
-                <ul>
-                  {section.content.map((benefit) => (
-                    <li key={benefit}>{benefit}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p>{section.content as string}</p>
-              )}
-            </div>
-          </details>
-        )
-      })}
-    </div>
-  )
-}
-
 function ProductModalInfo({
   product,
   titleId,
@@ -351,7 +303,16 @@ function ProductModalInfo({
           ) : null}
         </div>
 
-        <ProductDetails product={product} />
+        {product.benefits.length ? (
+          <div className="product-quick-benefits">
+            <span>Principales beneficios</span>
+            <ul>
+              {product.benefits.slice(0, 3).map((benefit) => (
+                <li key={benefit}><Check size={15} aria-hidden="true" />{benefit}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
 
       <div className="product-modal-actions">
@@ -372,10 +333,85 @@ function ProductModalInfo({
         >
           Escribir por WhatsApp
         </a>
+        <a className="product-full-detail-link" href={productDetailHref(product)}>
+          Ver producto completo <ArrowRight size={16} aria-hidden="true" />
+        </a>
         <small>
           Confirmaremos stock y valor final antes de coordinar la compra.
         </small>
       </div>
+    </div>
+  )
+}
+
+function ProductQuickView({
+  product,
+  titleId,
+  onClose,
+}: {
+  product: Product
+  titleId: string
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement | null
+    closeRef.current?.focus()
+
+    return () => previousFocusRef.current?.focus()
+  }, [])
+
+  const keepFocusInside = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Tab') return
+    const focusable = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) || [],
+    )
+    if (!focusable.length) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  return (
+    <div
+      className="modal-backdrop product-modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        ref={dialogRef}
+        className="product-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onKeyDown={keepFocusInside}
+      >
+        <button
+          ref={closeRef}
+          className="modal-close product-modal-close"
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar vista rápida del producto"
+        >
+          ×
+        </button>
+        <ProductGallery product={product} />
+        <ProductModalInfo product={product} titleId={titleId} />
+      </section>
     </div>
   )
 }
@@ -1035,6 +1071,262 @@ function WhatsAppConsultation() {
   )
 }
 
+type SiteHeaderProps = {
+  isMenuOpen: boolean
+  hasNews?: boolean
+  onMenuToggle: () => void
+  onMenuClose: () => void
+  onReserve: () => void
+}
+
+function SiteHeader({
+  isMenuOpen,
+  hasNews = false,
+  onMenuToggle,
+  onMenuClose,
+  onReserve,
+}: SiteHeaderProps) {
+  return (
+    <header className={`site-header ${isMenuOpen ? 'is-menu-open' : ''}`}>
+      <a className="brand" href="/" aria-label="Ir al inicio" onClick={onMenuClose}>
+        <img className="brand-logo" src={srLogoWhite} alt="" />
+        <span className="brand-name sr-only">Susana Riquelme</span>
+      </a>
+
+      <button
+        className="menu-toggle"
+        type="button"
+        aria-label={isMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+        aria-expanded={isMenuOpen}
+        onClick={onMenuToggle}
+      >
+        <span className="menu-toggle-label">Menú</span>
+        <span className="menu-toggle-icon" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+      </button>
+
+      <nav className="site-nav" aria-label="Navegación principal">
+        <a href="/#equipo" onClick={onMenuClose}>Nuestro Equipo</a>
+        <a href="/servicios/" onClick={onMenuClose}>Servicios</a>
+        <a href="/productos/" onClick={onMenuClose}>Productos</a>
+        <a href="/#alianzas" onClick={onMenuClose}>Alianzas</a>
+        {hasNews ? <a href="/#novedades" onClick={onMenuClose}>Novedades</a> : null}
+        <a href="/ubicacion/" onClick={onMenuClose}>Ubicación</a>
+      </nav>
+
+      <button className="header-action" type="button" onClick={onReserve}>
+        Reservar
+      </button>
+    </header>
+  )
+}
+
+function SiteFooter() {
+  return (
+    <footer className="site-footer">
+      <div className="footer-inner">
+        <div className="footer-brand-block">
+          <img src={srLogoBlack} alt="" />
+        </div>
+        <blockquote>
+          <p>
+            “No todas las mujeres necesitan el servicio que creen necesitar.
+            Mi trabajo es ayudarte a descubrir cuál es realmente el mejor para ti.”
+          </p>
+          <cite>Maria Jose</cite>
+        </blockquote>
+        <nav className="footer-socials" aria-label="Redes sociales">
+          {footerSocialLinks.map((social) => (
+            <a
+              key={social.name}
+              href={social.url}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={social.name}
+            >
+              <SocialIcon icon={social.icon} />
+            </a>
+          ))}
+        </nav>
+        <div className="footer-bottom">
+          <div className="footer-signature">
+            <span>Susana Riquelme Peluquería</span>
+            <nav className="footer-legal-links" aria-label="Información legal">
+              <a href="/#terminos">Términos y condiciones</a>
+              <a href="/#devoluciones">Devoluciones y reembolsos</a>
+              <a href="/#privacidad">Privacidad de datos</a>
+            </nav>
+          </div>
+          <div className="footer-utility">
+            <a className="footer-admin-link" href="/#admin" aria-label="Acceder al panel de administración">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.5" />
+                <path d="M5.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6" />
+              </svg>
+            </a>
+            <a href="#inicio">Volver arriba</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+function RouteBookingModal({ onClose }: { onClose: () => void }) {
+  const dialogRef = useRef<HTMLElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const serviceGroups = useServiceGroups()
+  const serviceOptions = serviceGroups.flatMap((group) =>
+    group.items.map((item) => `${group.title} - ${item.name} (${item.price})`),
+  )
+  const [name, setName] = useState('')
+  const [specialist, setSpecialist] = useState('')
+  const [service, setService] = useState('')
+  const [message, setMessage] = useState('')
+  const currentService = service || serviceOptions[0] || 'Consulta general'
+  const bookingMessage = [
+    `Hola Susana Riquelme Peluquería, soy ${name.trim() || 'una clienta'}.`,
+    `Quiero consultar por ${currentService}.`,
+    specialist ? `Especialista: ${specialist}.` : 'Aún no elijo especialista.',
+    message.trim(),
+  ].filter(Boolean).join(' ')
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement | null
+    closeRef.current?.focus()
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape)
+      previousFocusRef.current?.focus()
+    }
+  }, [onClose])
+
+  const keepFocusInside = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Tab') return
+    const focusable = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ) || [],
+    )
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (!first || !last) return
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  return (
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section ref={dialogRef} className="booking-modal" role="dialog" aria-modal="true" aria-labelledby="route-booking-title" onKeyDown={keepFocusInside}>
+        <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="Cerrar modal de reserva">×</button>
+        <div className="modal-brand">
+          <img src={srLogoWhite} alt="" />
+          <span>Reserva por WhatsApp</span>
+        </div>
+        <h2 id="route-booking-title">Cuéntanos qué necesitas y cotizamos tu hora.</h2>
+        <div className="modal-form">
+          <label>
+            Nombre
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Tu nombre" />
+          </label>
+          <label>
+            Especialista
+            <select value={specialist} onChange={(event) => setSpecialist(event.target.value)}>
+              <option value="">Aún no lo decido</option>
+              {team.map((member) => <option value={member.name} key={member.name}>{member.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Servicio
+            <select value={currentService} onChange={(event) => setService(event.target.value)}>
+              {serviceOptions.length
+                ? serviceOptions.map((option) => <option key={option}>{option}</option>)
+                : <option>Consulta general</option>}
+            </select>
+          </label>
+          <label>
+            Mensaje
+            <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Cuéntanos tu disponibilidad, largo de cabello o dudas." />
+          </label>
+        </div>
+        <a
+          className="button primary-button modal-submit"
+          href={whatsappHref(bookingMessage)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Cotizar por WhatsApp
+        </a>
+      </section>
+    </div>
+  )
+}
+
+function PublicRouteLayout({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isBookingOpen, setIsBookingOpen] = useState(false)
+  const [hasNews, setHasNews] = useState(false)
+  const closeBooking = useCallback(() => setIsBookingOpen(false), [])
+
+  useEffect(() => {
+    const unsubscribeNews = subscribeToNews((items) =>
+      setHasNews(items.some((item) => item.active)),
+    )
+    return () => unsubscribeNews()
+  }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = isBookingOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isBookingOpen])
+
+  return (
+    <div className={`app-shell public-route-shell ${className}`.trim()} id="inicio">
+      <SiteHeader
+        isMenuOpen={isMenuOpen}
+        hasNews={hasNews}
+        onMenuToggle={() => setIsMenuOpen((current) => !current)}
+        onMenuClose={() => setIsMenuOpen(false)}
+        onReserve={() => {
+          setIsMenuOpen(false)
+          setIsBookingOpen(true)
+          trackSiteEvent('booking_open', { itemName: 'Reserva general' })
+        }}
+      />
+      {children}
+      <SiteFooter />
+      {isBookingOpen ? <RouteBookingModal onClose={closeBooking} /> : null}
+    </div>
+  )
+}
+
 function Landing() {
   usePageMetadata({
     title: 'Peluquería y Colorimetría en Concepción | Susana Riquelme',
@@ -1064,6 +1356,8 @@ function Landing() {
   const [selectedService, setSelectedService] = useState('')
   const [clientMessage, setClientMessage] = useState('')
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const bookingCloseRef = useRef<HTMLButtonElement>(null)
+  const bookingPreviousFocusRef = useRef<HTMLElement | null>(null)
   const products = useMemo(
     () => managedProducts.filter((product) => product.active),
     [managedProducts],
@@ -1272,53 +1566,22 @@ function Landing() {
     }
   }, [isBookingOpen, selectedProduct, selectedTeamMember])
 
+  useEffect(() => {
+    if (!isBookingOpen) return
+    bookingPreviousFocusRef.current = document.activeElement as HTMLElement | null
+    bookingCloseRef.current?.focus()
+    return () => bookingPreviousFocusRef.current?.focus()
+  }, [isBookingOpen])
+
   return (
     <div className="app-shell">
-      <header className={`site-header ${isMenuOpen ? 'is-menu-open' : ''}`}>
-        <a
-          className="brand"
-          href="/"
-          aria-label="Ir al inicio"
-          onClick={() => setIsMenuOpen(false)}
-        >
-          <img className="brand-logo" src={srLogoWhite} alt="" />
-          <span className="brand-name sr-only">Susana Riquelme</span>
-        </a>
-
-        <button
-          className="menu-toggle"
-          type="button"
-          aria-label={isMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
-          aria-expanded={isMenuOpen}
-          onClick={() => setIsMenuOpen((current) => !current)}
-        >
-          <span className="menu-toggle-label">Menu</span>
-          <span className="menu-toggle-icon" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-        </button>
-
-        <nav className="site-nav" aria-label="Navegacion principal">
-          <a href="/#equipo" onClick={() => setIsMenuOpen(false)}>Nuestro Equipo</a>
-          <a href="/servicios/" onClick={() => setIsMenuOpen(false)}>Servicios</a>
-          <a href="/productos/" onClick={() => setIsMenuOpen(false)}>Productos</a>
-          <a href="/#alianzas" onClick={() => setIsMenuOpen(false)}>Alianzas</a>
-          {newsItems.length ? (
-            <a href="/#novedades" onClick={() => setIsMenuOpen(false)}>Novedades</a>
-          ) : null}
-          <a href="/ubicacion/" onClick={() => setIsMenuOpen(false)}>Ubicacion</a>
-        </nav>
-
-        <button
-          className="header-action"
-          type="button"
-          onClick={() => openBooking()}
-        >
-          Reservar
-        </button>
-      </header>
+      <SiteHeader
+        isMenuOpen={isMenuOpen}
+        hasNews={newsItems.length > 0}
+        onMenuToggle={() => setIsMenuOpen((current) => !current)}
+        onMenuClose={() => setIsMenuOpen(false)}
+        onReserve={() => openBooking()}
+      />
 
       <main>
         <section className="hero-section" id="inicio">
@@ -1394,6 +1657,9 @@ function Landing() {
                   <span><Check aria-hidden="true" size={15} />Valores referenciales</span>
                   <span><Check aria-hidden="true" size={15} />Asesoría personalizada</span>
                 </div>
+                <a className="services-route-link" href="/servicios/">
+                  Ver todos los servicios <ArrowRight size={16} aria-hidden="true" />
+                </a>
               </div>
               <figure className="services-hero-visual">
                 <img src={salonHero} alt="Área de atención de Susana Riquelme Peluquería" />
@@ -1657,6 +1923,14 @@ function Landing() {
                     </span>
                   ) : null}
                   <ContentImage source={product.image} alt={product.title} />
+                  <button
+                    className="product-quick-view"
+                    type="button"
+                    onClick={() => openProduct(product)}
+                    aria-label={`Vista rápida de ${product.title}`}
+                  >
+                    <span>Vista rápida</span>
+                  </button>
                 </div>
                 <div className="product-body">
                   <p>{product.brand}</p>
@@ -1664,13 +1938,9 @@ function Landing() {
                   <span className="product-size">{product.size}</span>
                   <div className="product-footer">
                     <ProductPrice product={product} />
-                    <button
-                      className="buy-link"
-                      type="button"
-                      onClick={() => openProduct(product)}
-                    >
+                    <a className="buy-link" href={productDetailHref(product)}>
                       Ver producto
-                    </button>
+                    </a>
                   </div>
                 </div>
               </article>
@@ -2018,58 +2288,7 @@ function Landing() {
 
       </main>
 
-      <footer className="site-footer">
-        <div className="footer-inner">
-          <div className="footer-brand-block">
-            <img src={srLogoBlack} alt="" />
-          </div>
-          <blockquote>
-            <p>
-              “No todas las mujeres necesitan el servicio que creen necesitar.
-              Mi trabajo es ayudarte a descubrir cuál es realmente el mejor para ti.”
-            </p>
-            <cite>Maria Jose</cite>
-          </blockquote>
-          <nav className="footer-socials" aria-label="Redes sociales">
-            {footerSocialLinks.map((social) => (
-              <a
-                key={social.name}
-                href={social.url}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={social.name}
-              >
-                <SocialIcon icon={social.icon} />
-              </a>
-            ))}
-          </nav>
-          <div className="footer-bottom">
-            <div className="footer-signature">
-              <span>Susana Riquelme Peluquería</span>
-              <nav className="footer-legal-links" aria-label="Información legal">
-                <a href="#terminos" target="_blank" rel="noreferrer">
-                  Términos y condiciones
-                </a>
-                <a href="#devoluciones" target="_blank" rel="noreferrer">
-                  Devoluciones y reembolsos
-                </a>
-                <a href="#privacidad" target="_blank" rel="noreferrer">
-                  Privacidad de datos
-                </a>
-              </nav>
-            </div>
-            <div className="footer-utility">
-              <a className="footer-admin-link" href="#admin" aria-label="Acceder al panel de administración">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="8" r="3.5" />
-                  <path d="M5.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6" />
-                </svg>
-              </a>
-              <a href="#inicio">Volver arriba</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
 
       {isBookingOpen ? (
         <div
@@ -2086,6 +2305,7 @@ function Landing() {
             aria-labelledby="booking-title"
           >
             <button
+              ref={bookingCloseRef}
               className="modal-close"
               type="button"
               onClick={() => setIsBookingOpen(false)}
@@ -2206,52 +2426,13 @@ function Landing() {
       ) : null}
 
       {selectedProduct ? (
-        <div
-          className="modal-backdrop product-modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelectedProduct(null)
-          }}
-        >
-          <section
-            className="product-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="product-modal-title"
-          >
-            <button
-              className="modal-close product-modal-close"
-              type="button"
-              onClick={() => setSelectedProduct(null)}
-              aria-label="Cerrar detalle de producto"
-            >
-              ×
-            </button>
-
-            <ProductGallery product={selectedProduct} />
-
-            <ProductModalInfo
-              product={selectedProduct}
-              titleId="product-modal-title"
-            />
-          </section>
-        </div>
+        <ProductQuickView
+          product={selectedProduct}
+          titleId="product-modal-title"
+          onClose={() => setSelectedProduct(null)}
+        />
       ) : null}
     </div>
-  )
-}
-
-function RoutePageHeader({ backLabel = 'Volver al inicio', backHref = '/' }) {
-  return (
-    <header className="store-header seo-page-header">
-      <a className="store-brand" href="/" aria-label="Ir al inicio">
-        <img className="store-brand-logo" src={srLogoBlack} alt="" />
-      </a>
-      <a className="store-back-link" href={backHref}>
-        <ArrowLeft size={15} strokeWidth={1.9} aria-hidden="true" />
-        {backLabel}
-      </a>
-    </header>
   )
 }
 
@@ -2278,9 +2459,8 @@ function ServicesRoutePage() {
   const serviceGroups = useServiceGroups()
 
   return (
-    <div className="seo-route-page">
-      <RoutePageHeader />
-      <main className="seo-route-main">
+    <PublicRouteLayout className="seo-route-page services-route-page">
+      <main className="seo-route-main services-route-main">
         <section className="seo-route-hero">
           <div>
             <p className="section-kicker">Servicios de peluquería en Concepción</p>
@@ -2293,7 +2473,7 @@ function ServicesRoutePage() {
           </p>
         </section>
 
-        <nav className="seo-route-links" aria-label="Categorías de servicios">
+        <nav className="seo-route-links services-category-nav" aria-label="Categorías de servicios">
           {serviceGroups.map((group) => (
             <a
               href={
@@ -2308,20 +2488,14 @@ function ServicesRoutePage() {
           ))}
         </nav>
 
-        <div className="seo-services-grid">
-          {serviceGroups.map((group, groupIndex) =>
-            isSmoothingService(group.title) ? (
-              <SmoothingServiceCard
-                group={group}
-                onBook={openRouteBooking}
-                key={group.title}
-              />
-            ) : (
-              <section
-                className="service-block service-card"
-                id={getServiceSectionId(group.title)}
-                key={group.title}
-              >
+        <div className="seo-services-catalog">
+          {serviceGroups.map((group, groupIndex) => (
+            <section
+              className={`seo-service-category${isSmoothingService(group.title) ? ' is-smoothing' : ''}`}
+              id={getServiceSectionId(group.title)}
+              key={group.title}
+            >
+              <header className="seo-service-category-copy">
                 <div className="service-card-topline">
                   <div className="service-block-head">
                     <span>{group.kicker}</span>
@@ -2332,33 +2506,38 @@ function ServicesRoutePage() {
                   </span>
                 </div>
                 <h2>{group.title}</h2>
-                <p className="service-note">{group.note}</p>
+                <p>{group.note}</p>
+                {isSmoothingService(group.title) ? (
+                  <a className="service-detail-link" href="/servicios/alisado/">
+                    Conocer el servicio de alisado <ArrowRight size={17} aria-hidden="true" />
+                  </a>
+                ) : null}
+              </header>
+
+              <div className="seo-service-price-list">
                 <ul>
                   {group.items.map((item) => (
                     <li key={item.name}>
                       <button
                         type="button"
                         onClick={() =>
-                          openRouteBooking(
-                            `${group.title} - ${item.name} (${item.price})`,
-                          )
+                          openRouteBooking(`${group.title} - ${item.name} (${item.price})`)
                         }
-                        aria-label={`Reservar ${item.name}, ${item.price}`}
+                        aria-label={`Consultar y reservar ${item.name}, ${item.price}`}
                       >
-                        <span className="service-item-name">{item.name}</span>
-                        <span className="service-leader" aria-hidden="true" />
+                        <span>{item.name}</span>
                         <strong>{item.price}</strong>
-                        <ArrowUpRight aria-hidden="true" size={17} />
+                        <span className="service-row-action">
+                          Consultar <ArrowUpRight aria-hidden="true" size={16} />
+                        </span>
                       </button>
                     </li>
                   ))}
                 </ul>
-                {group.disclaimer ? (
-                  <p className="service-disclaimer">{group.disclaimer}</p>
-                ) : null}
-              </section>
-            ),
-          )}
+                {group.disclaimer ? <p>{group.disclaimer}</p> : null}
+              </div>
+            </section>
+          ))}
         </div>
 
         <section className="seo-route-cta">
@@ -2374,7 +2553,7 @@ function ServicesRoutePage() {
           </button>
         </section>
       </main>
-    </div>
+    </PublicRouteLayout>
   )
 }
 
@@ -2391,9 +2570,13 @@ function SmoothingRoutePage() {
     initialServiceCategories.find((group) => isSmoothingService(group.title))
 
   return (
-    <div className="seo-route-page smoothing-route-page">
-      <RoutePageHeader backLabel="Ver todos los servicios" backHref="/servicios/" />
+    <PublicRouteLayout className="seo-route-page smoothing-route-page">
       <main className="seo-route-main">
+        <nav className="route-breadcrumbs" aria-label="Migas de pan">
+          <a href="/">Inicio</a><span aria-hidden="true">/</span>
+          <a href="/servicios/">Servicios</a><span aria-hidden="true">/</span>
+          <span aria-current="page">Alisado</span>
+        </nav>
         <section className="seo-route-hero smoothing-route-hero">
           <div>
             <p className="section-kicker">Disciplina y control del frizz</p>
@@ -2428,7 +2611,7 @@ function SmoothingRoutePage() {
           </article>
         </section>
       </main>
-    </div>
+    </PublicRouteLayout>
   )
 }
 
@@ -2441,8 +2624,7 @@ function LocationRoutePage() {
   })
 
   return (
-    <div className="seo-route-page location-route-page">
-      <RoutePageHeader />
+    <PublicRouteLayout className="seo-route-page location-route-page">
       <main className="seo-route-main">
         <section className="seo-route-hero">
           <div>
@@ -2484,7 +2666,7 @@ function LocationRoutePage() {
           </div>
         </section>
       </main>
-    </div>
+    </PublicRouteLayout>
   )
 }
 
@@ -2497,11 +2679,24 @@ function ProductsStorePage() {
   })
   const [managedProducts, setManagedProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [productQuery, setProductQuery] = useState('')
-  const [selectedBrand, setSelectedBrand] = useState('Todos')
-  const [selectedCategory, setSelectedCategory] = useState('Todas')
-  const [productSort, setProductSort] = useState('featured')
-  const [storeGridColumns, setStoreGridColumns] = useState<StoreGridColumns>(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [productQuery, setProductQuery] = useState(
+    () => new URLSearchParams(window.location.search).get('q') || '',
+  )
+  const [selectedBrand, setSelectedBrand] = useState(
+    () => new URLSearchParams(window.location.search).get('marca') || 'Todos',
+  )
+  const [selectedCategory, setSelectedCategory] = useState(
+    () => new URLSearchParams(window.location.search).get('categoria') || 'Todas',
+  )
+  const [productSort, setProductSort] = useState(
+    () => new URLSearchParams(window.location.search).get('orden') || 'featured',
+  )
+  const [storeGridColumns, setStoreGridColumns] = useState<StoreGridColumns>(() => {
+    const requestedColumns = Number(new URLSearchParams(window.location.search).get('vista'))
+    return requestedColumns === 2 || requestedColumns === 3 ? requestedColumns : 1
+  })
 
   const products = useMemo(
     () => managedProducts.filter((product) => product.active),
@@ -2571,10 +2766,36 @@ function ProductsStorePage() {
   }
 
   useEffect(() => {
-    const unsubscribeProducts = subscribeToProducts(setManagedProducts)
+    const unsubscribeProducts = subscribeToProducts(
+      (nextProducts) => {
+        setManagedProducts(nextProducts)
+        setIsLoading(false)
+        setLoadError('')
+      },
+      () => {
+        setIsLoading(false)
+        setLoadError('No pudimos cargar el catálogo en este momento.')
+      },
+    )
     trackSiteEvent('section_view', { section: 'tienda' })
     return () => unsubscribeProducts()
   }, [])
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const setOptionalParam = (key: string, value: string, defaultValue: string) => {
+      if (value && value !== defaultValue) url.searchParams.set(key, value)
+      else url.searchParams.delete(key)
+    }
+
+    setOptionalParam('q', productQuery, '')
+    setOptionalParam('marca', selectedBrand, 'Todos')
+    setOptionalParam('categoria', selectedCategory, 'Todas')
+    setOptionalParam('orden', productSort, 'featured')
+    setOptionalParam('vista', String(storeGridColumns), '1')
+    url.searchParams.delete('producto')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [productQuery, productSort, selectedBrand, selectedCategory, storeGridColumns])
 
   useEffect(() => {
     document.body.style.overflow = selectedProduct ? 'hidden' : ''
@@ -2591,17 +2812,7 @@ function ProductsStorePage() {
   }, [selectedProduct])
 
   return (
-    <div className="store-page">
-      <header className="store-header">
-        <a className="store-brand" href="/" aria-label="Volver al inicio">
-          <img className="store-brand-logo" src={srLogoBlack} alt="" />
-        </a>
-        <a className="store-back-link" href="/">
-          <ArrowLeft size={15} strokeWidth={1.9} aria-hidden="true" />
-          Volver
-        </a>
-      </header>
-
+    <PublicRouteLayout className="store-page">
       <main className="store-main">
         <section className="store-hero">
           <div>
@@ -2739,7 +2950,25 @@ function ProductsStorePage() {
                 </div>
               </div>
 
-              {filteredProducts.length ? (
+              {isLoading ? (
+                <div className="store-loading-grid" role="status" aria-live="polite">
+                  <span className="sr-only">Cargando productos</span>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <div className="store-loading-card" aria-hidden="true" key={index}>
+                      <i /><span /><span /><span />
+                    </div>
+                  ))}
+                </div>
+              ) : loadError ? (
+                <div className="products-empty store-empty" role="alert">
+                  <span aria-hidden="true">SR</span>
+                  <h3>No pudimos abrir la tienda.</h3>
+                  <p>{loadError} Puedes consultarnos directamente por WhatsApp.</p>
+                  <a href={whatsappHref('Hola Susana Riquelme Peluquería, quiero consultar por sus productos.')} target="_blank" rel="noreferrer">
+                    Consultar productos
+                  </a>
+                </div>
+              ) : filteredProducts.length ? (
                 <div className="store-product-grid" data-columns={storeGridColumns}>
                   {filteredProducts.map((product) => (
                     <article className="store-product-card" key={product.id || product.title}>
@@ -2747,7 +2976,7 @@ function ProductsStorePage() {
                         className="store-product-image"
                         type="button"
                         onClick={() => openStoreProduct(product)}
-                        aria-label={`Ver ${product.title}`}
+                        aria-label={`Vista rápida de ${product.title}`}
                       >
                         <span>{product.category}</span>
                         {productDiscount(product) > 0 ? (
@@ -2756,6 +2985,7 @@ function ProductsStorePage() {
                           </span>
                         ) : null}
                         <ContentImage source={product.image} alt={product.title} />
+                        <span className="store-quick-view-label">Vista rápida</span>
                       </button>
                       <div className="store-product-body">
                         <p>{product.brand}</p>
@@ -2763,9 +2993,9 @@ function ProductsStorePage() {
                         <span>{product.size}</span>
                         <div className="store-product-footer">
                           <ProductPrice product={product} />
-                          <button type="button" onClick={() => openStoreProduct(product)}>
+                          <a href={productDetailHref(product)}>
                             {storeGridColumns === 1 ? 'Ver producto' : 'Ver'}
-                          </button>
+                          </a>
                         </div>
                       </div>
                     </article>
@@ -2787,38 +3017,196 @@ function ProductsStorePage() {
       </main>
 
       {selectedProduct ? (
-        <div
-          className="modal-backdrop product-modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelectedProduct(null)
-          }}
-        >
-          <section
-            className="product-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="store-product-modal-title"
-          >
-            <button
-              className="modal-close product-modal-close"
-              type="button"
-              onClick={() => setSelectedProduct(null)}
-              aria-label="Cerrar detalle de producto"
-            >
-              ×
-            </button>
-
-            <ProductGallery product={selectedProduct} />
-
-            <ProductModalInfo
-              product={selectedProduct}
-              titleId="store-product-modal-title"
-            />
-          </section>
-        </div>
+        <ProductQuickView
+          product={selectedProduct}
+          titleId="store-product-modal-title"
+          onClose={() => setSelectedProduct(null)}
+        />
       ) : null}
-    </div>
+    </PublicRouteLayout>
+  )
+}
+
+function ProductDetailPage({ locator }: { locator: string }) {
+  const [managedProducts, setManagedProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const products = useMemo(
+    () => managedProducts.filter((product) => product.active),
+    [managedProducts],
+  )
+  const product = useMemo(
+    () => findProductByLocator(products, locator),
+    [locator, products],
+  )
+  const relatedProducts = useMemo(() => {
+    if (!product) return []
+    return relatedProductsFor(products, product)
+  }, [product, products])
+
+  usePageMetadata({
+    title: product
+      ? `${product.title} | Susana Riquelme Peluquería`
+      : 'Detalle de producto | Susana Riquelme Peluquería',
+    description: product?.description ||
+      'Conoce características, beneficios y recomendaciones de productos profesionales para el cabello.',
+    canonicalPath: `/productos/?producto=${encodeURIComponent(product ? productLocator(product) : locator)}`,
+  })
+
+  useEffect(() => {
+    const unsubscribeProducts = subscribeToProducts(
+      (nextProducts) => {
+        setManagedProducts(nextProducts)
+        setIsLoading(false)
+        setLoadError('')
+      },
+      () => {
+        setIsLoading(false)
+        setLoadError('No pudimos consultar este producto en este momento.')
+      },
+    )
+    return () => unsubscribeProducts()
+  }, [])
+
+  useEffect(() => {
+    if (!product) return
+    trackSiteEvent('product_view', {
+      itemId: product.id || product.title,
+      itemName: product.title,
+      section: 'ficha-producto',
+    })
+  }, [product])
+
+  const informationSections = product
+    ? [
+        { title: 'Activos principales', content: product.activePrinciples },
+        { title: 'Modo de uso', content: product.usage },
+        { title: 'Resultado', content: product.result },
+        { title: 'Precauciones', content: product.precautions },
+      ].filter((section) => section.content.trim())
+    : []
+
+  return (
+    <PublicRouteLayout className="product-detail-page">
+      <main className="product-detail-main">
+        <nav className="route-breadcrumbs product-breadcrumbs" aria-label="Migas de pan">
+          <a href="/">Inicio</a><span aria-hidden="true">/</span>
+          <a href="/productos/">Productos</a>
+          {product ? <><span aria-hidden="true">/</span><span aria-current="page">{product.title}</span></> : null}
+        </nav>
+
+        {isLoading ? (
+          <section className="product-detail-status is-loading" role="status">
+            <span className="sr-only">Cargando producto</span>
+            <div /><div />
+          </section>
+        ) : loadError || !product ? (
+          <section className="product-detail-status" role="alert">
+            <p className="section-kicker">Catálogo profesional</p>
+            <h1>Producto no disponible.</h1>
+            <p>
+              {loadError || 'Este producto fue retirado, está temporalmente oculto o el enlace ya no está vigente.'}
+            </p>
+            <div>
+              <a className="button primary-button" href="/productos/">Volver al catálogo</a>
+              <a className="button ghost-button" href={whatsappHref('Hola Susana Riquelme Peluquería, quiero consultar por un producto del catálogo.')} target="_blank" rel="noreferrer">
+                Consultar por WhatsApp
+              </a>
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className="product-detail-hero">
+              <div className="product-detail-gallery">
+                <ProductGallery product={product} />
+              </div>
+              <div className="product-detail-summary">
+                <p className="product-modal-brand">{product.brand}</p>
+                <h1>{product.title}</h1>
+                <p className="product-detail-meta">{product.category} · {product.size}</p>
+                <ProductPrice product={product} variant="modal" />
+                {product.description ? <p className="product-detail-lead">{product.description}</p> : null}
+                {product.benefits.length ? (
+                  <ul className="product-detail-benefits">
+                    {product.benefits.slice(0, 4).map((benefit) => (
+                      <li key={benefit}><Check size={16} aria-hidden="true" />{benefit}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                <a
+                  className="button product-detail-buy"
+                  href={whatsappHref(`Hola Susana Riquelme Peluquería, quiero consultar por ${product.title}.`)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => trackSiteEvent('product_whatsapp', {
+                    itemId: product.id || product.title,
+                    itemName: product.title,
+                    section: 'ficha-producto',
+                  })}
+                >
+                  Consultar disponibilidad por WhatsApp
+                  <ArrowUpRight size={17} aria-hidden="true" />
+                </a>
+                <small>Compra asistida. Confirmaremos stock y valor antes de coordinar.</small>
+              </div>
+            </section>
+
+            <section className="product-detail-content-section">
+              <header>
+                <p className="section-kicker">Conoce el producto</p>
+                <h2>Todo lo que necesitas saber antes de elegirlo.</h2>
+              </header>
+              <div className="product-information-grid">
+                {product.description ? (
+                  <article className="is-description">
+                    <span>Descripción</span>
+                    <p>{product.description}</p>
+                  </article>
+                ) : null}
+                {product.benefits.length ? (
+                  <article>
+                    <span>Beneficios</span>
+                    <ul>{product.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
+                  </article>
+                ) : null}
+                {informationSections.map((section) => (
+                  <article className={section.title === 'Precauciones' ? 'is-caution' : ''} key={section.title}>
+                    <span>{section.title}</span>
+                    <p>{section.content}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            {relatedProducts.length ? (
+              <section className="related-products-section">
+                <header>
+                  <div>
+                    <p className="section-kicker">También te puede servir</p>
+                    <h2>Productos similares.</h2>
+                  </div>
+                  <a href="/productos/">Ver todo el catálogo</a>
+                </header>
+                <div className="related-products-grid">
+                  {relatedProducts.map((relatedProduct) => (
+                    <article key={relatedProduct.id || relatedProduct.title}>
+                      <a className="related-product-image" href={productDetailHref(relatedProduct)}>
+                        <ContentImage source={relatedProduct.image} alt={relatedProduct.title} />
+                      </a>
+                      <div>
+                        <p>{relatedProduct.brand}</p>
+                        <h3><a href={productDetailHref(relatedProduct)}>{relatedProduct.title}</a></h3>
+                        <ProductPrice product={relatedProduct} />
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </>
+        )}
+      </main>
+    </PublicRouteLayout>
   )
 }
 
@@ -2869,17 +3257,7 @@ function PolicyPage({
   }, [title])
 
   return (
-    <div className="legal-page">
-      <header className="legal-header">
-        <a className="legal-brand" href="/" aria-label="Volver al sitio principal">
-          <img src={srLogoBlack} alt="Susana Riquelme Peluquería" />
-        </a>
-        <a className="legal-back-link" href="/">
-          <ArrowLeft aria-hidden="true" size={17} />
-          Volver al sitio
-        </a>
-      </header>
-
+    <PublicRouteLayout className="legal-page">
       <main className="legal-main">
         <section className="legal-hero">
           <div>
@@ -2925,7 +3303,7 @@ function PolicyPage({
           </article>
         </div>
       </main>
-    </div>
+    </PublicRouteLayout>
   )
 }
 
@@ -2941,17 +3319,7 @@ function TermsPage() {
   }, [])
 
   return (
-    <div className="legal-page">
-      <header className="legal-header">
-        <a className="legal-brand" href="/" aria-label="Volver al sitio principal">
-          <img src={srLogoBlack} alt="Susana Riquelme Peluquería" />
-        </a>
-        <a className="legal-back-link" href="/">
-          <ArrowLeft aria-hidden="true" size={17} />
-          Volver al sitio
-        </a>
-      </header>
-
+    <PublicRouteLayout className="legal-page">
       <main className="legal-main">
         <section className="legal-hero">
           <div>
@@ -3141,7 +3509,7 @@ function TermsPage() {
                   restringen el derecho a reclamar por productos defectuosos, falta
                   de conformidad o información incorrecta.
                 </p>
-                <a className="legal-inline-link" href="#devoluciones" target="_blank" rel="noreferrer">
+                <a className="legal-inline-link" href="#devoluciones">
                   Revisar política de devoluciones y reembolsos
                   <ArrowUpRight aria-hidden="true" size={15} />
                 </a>
@@ -3173,7 +3541,7 @@ function TermsPage() {
                   N° 19.628 y, desde su entrada en vigencia, por las modificaciones
                   introducidas por la Ley N° 21.719.
                 </p>
-                <a className="legal-inline-link" href="#privacidad" target="_blank" rel="noreferrer">
+                <a className="legal-inline-link" href="#privacidad">
                   Revisar política de privacidad de datos
                   <ArrowUpRight aria-hidden="true" size={15} />
                 </a>
@@ -3259,7 +3627,7 @@ function TermsPage() {
           </article>
         </div>
       </main>
-    </div>
+    </PublicRouteLayout>
   )
 }
 
@@ -3708,6 +4076,7 @@ function PrivacyPolicyPage() {
 function App() {
   const [currentHash, setCurrentHash] = useState(() => window.location.hash)
   const currentPath = window.location.pathname.replace(/\/+$/, '') || '/'
+  const productQueryLocator = new URLSearchParams(window.location.search).get('producto')
 
   useEffect(() => {
     const handleHashChange = () => setCurrentHash(window.location.hash)
@@ -3728,7 +4097,9 @@ function App() {
   else if (currentHash === '#privacidad') publicPage = <PrivacyPolicyPage />
   else if (currentPath === '/servicios/alisado') publicPage = <SmoothingRoutePage />
   else if (currentPath === '/servicios') publicPage = <ServicesRoutePage />
-  else if (currentPath === '/productos' || currentHash === '#tienda') {
+  else if (currentPath === '/productos' && productQueryLocator) {
+    publicPage = <ProductDetailPage locator={productQueryLocator} />
+  } else if (currentPath === '/productos' || currentHash === '#tienda') {
     publicPage = <ProductsStorePage />
   } else if (currentPath === '/ubicacion') publicPage = <LocationRoutePage />
 
