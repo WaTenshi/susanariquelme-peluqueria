@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ArrowLeft,
@@ -799,6 +799,79 @@ const gallery = [
   },
 ]
 
+function SalonGallery() {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const swipeStartX = useRef<number | null>(null)
+  const totalSlides = gallery.length
+
+  const showPrevious = () =>
+    setActiveIndex((current) => (current - 1 + totalSlides) % totalSlides)
+  const showNext = () =>
+    setActiveIndex((current) => (current + 1) % totalSlides)
+
+  return (
+    <div className="gallery-section is-integrated" role="region" aria-label="Recorre el salón">
+      <div className="gallery-heading">
+        <p>Recorre nuestro espacio</p>
+        <div className="gallery-controls" aria-label="Controles de la galería">
+          <span aria-live="polite">
+            {String(activeIndex + 1).padStart(2, '0')} / {String(totalSlides).padStart(2, '0')}
+          </span>
+          <button type="button" onClick={showPrevious} aria-label="Ver foto anterior">
+            <ChevronLeft aria-hidden="true" />
+          </button>
+          <button type="button" onClick={showNext} aria-label="Ver foto siguiente">
+            <ChevronRight aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <div
+        className="gallery-carousel"
+        onPointerDown={(event) => {
+          swipeStartX.current = event.clientX
+        }}
+        onPointerUp={(event) => {
+          if (swipeStartX.current === null) return
+          const distance = event.clientX - swipeStartX.current
+          swipeStartX.current = null
+          if (Math.abs(distance) < 45) return
+          if (distance > 0) showPrevious()
+          else showNext()
+        }}
+        onPointerCancel={() => {
+          swipeStartX.current = null
+        }}
+      >
+        <div
+          className="gallery-track"
+          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        >
+          {gallery.map((item, index) => (
+            <figure className="gallery-slide" aria-hidden={index !== activeIndex} key={item.src}>
+              <img src={item.src} alt={index === activeIndex ? item.alt : ''} loading="lazy" />
+              <figcaption>{item.alt}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+
+      <div className="gallery-dots" aria-label="Seleccionar fotografía">
+        {gallery.map((item, index) => (
+          <button
+            className={index === activeIndex ? 'is-active' : ''}
+            type="button"
+            aria-label={`Ver foto ${index + 1}: ${item.alt}`}
+            aria-pressed={index === activeIndex}
+            onClick={() => setActiveIndex(index)}
+            key={item.src}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const socialFrames = [
   {
     name: 'Instagram',
@@ -855,6 +928,110 @@ function SocialIcon({ icon }: { icon: string }) {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M20.2 3.8A10.2 10.2 0 0 0 3.9 15.7L2.5 21.5l5.9-1.5a10.2 10.2 0 0 0 4.9 1.2A10.2 10.2 0 0 0 20.2 3.8Zm-6.9 15.5a8.3 8.3 0 0 1-4.2-1.1l-.3-.2-3.5.9.9-3.4-.2-.4a8.2 8.2 0 1 1 7.3 4.2Zm4.6-6.1c-.2-.1-1.5-.7-1.8-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.9 1-.2.2-.3.2-.6.1a6.8 6.8 0 0 1-3.4-3c-.2-.3 0-.4.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.8-1.9c-.2-.5-.5-.4-.6-.4h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z" />
     </svg>
+  )
+}
+
+function WhatsAppConsultation() {
+  const [isOpen, setIsOpen] = useState(false)
+  const consultationMessage =
+    'Hola Susana Riquelme Peluquería, quiero hacer una consulta sobre sus servicios.'
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isOpen])
+
+  const togglePanel = () => {
+    setIsOpen((current) => {
+      if (!current) {
+        trackSiteEvent('whatsapp_open', {
+          section: 'boton-flotante',
+          itemName: 'Consulta general',
+        })
+      }
+      return !current
+    })
+  }
+
+  return (
+    <aside className={`whatsapp-consultation ${isOpen ? 'is-open' : ''}`}>
+      <section
+        className="whatsapp-panel"
+        id="whatsapp-consultation-panel"
+        role="dialog"
+        aria-modal="false"
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+        aria-labelledby="whatsapp-panel-title"
+      >
+          <header className="whatsapp-panel-header">
+            <div>
+              <span className="whatsapp-panel-brand">Susana Riquelme Peluquería</span>
+              <h2 id="whatsapp-panel-title">¿Cómo podemos ayudarte?</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              aria-label="Cerrar consulta por WhatsApp"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </header>
+
+          <div className="whatsapp-panel-body">
+            <div className="whatsapp-advisor">
+              <span className="whatsapp-advisor-avatar" aria-hidden="true">
+                <img src={srLogoBlack} alt="" />
+                <i />
+              </span>
+              <div>
+                <strong>Equipo Susana Riquelme</strong>
+                <span>Asesoría del salón</span>
+                <small><i aria-hidden="true" /> Disponible</small>
+              </div>
+            </div>
+            <p>
+              ¡Hola! Cuéntanos qué servicio, producto o cambio tienes en mente y
+              te orientaremos personalmente.
+            </p>
+            <a
+              href={whatsappHref(consultationMessage)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() =>
+                trackSiteEvent('whatsapp_open', {
+                  section: 'boton-flotante',
+                  itemName: 'Conversación iniciada',
+                })
+              }
+            >
+              <SocialIcon icon="whatsapp" />
+              Iniciar conversación
+            </a>
+            <small className="whatsapp-panel-note">
+              Te responderemos dentro de nuestro horario de atención.
+            </small>
+          </div>
+      </section>
+
+      <button
+        className="whatsapp-trigger"
+        type="button"
+        onClick={togglePanel}
+        aria-expanded={isOpen}
+        aria-controls="whatsapp-consultation-panel"
+        aria-label={isOpen ? 'Cerrar consulta por WhatsApp' : 'Abrir consulta por WhatsApp'}
+      >
+        <SocialIcon icon="whatsapp" />
+        <span>Hola, ¿podemos ayudarte?</span>
+      </button>
+    </aside>
   )
 }
 
@@ -1081,6 +1258,7 @@ function Landing() {
 
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        setIsMenuOpen(false)
         setIsBookingOpen(false)
         setSelectedProduct(null)
         setSelectedTeamMember(null)
@@ -1148,11 +1326,12 @@ function Landing() {
             className="hero-image"
             src={salonHero}
             alt="Interior del salón Susana Riquelme Peluquería en Concepción"
+            fetchPriority="high"
+            decoding="async"
           />
           <div className="hero-shade" />
 
           <div className="hero-content">
-            <img className="hero-logo" src={srLogoWhite} alt="" />
             <p className="eyebrow">Peluquería en Concepción, Chile</p>
             <h1>
               <span>Susana</span>
@@ -1160,9 +1339,8 @@ function Landing() {
               <span>Peluquería</span>
             </h1>
             <p className="hero-copy">
-              Salón de belleza en Concepción con cuidado capilar personalizado,
-              colorimetría profesional y productos seleccionados para que tu
-              cabello se vea y se sienta como merece.
+              Colorimetría, cortes y tratamientos personalizados para que tu
+              cabello se vea saludable, auténtico y se sienta como tú.
             </p>
 
             <div className="hero-actions" aria-label="Acciones principales">
@@ -1177,58 +1355,11 @@ function Landing() {
                 Ver productos
               </a>
             </div>
-          </div>
-        </section>
 
-        <section className="intro-section" id="salon">
-          <div className="section-kicker">El salón</div>
-          <div className="intro-grid">
-            <div className="intro-copy">
-              <h2>Un espacio creado para cuidar tu cabello con criterio.</h2>
-              <p>
-                En Susana Riquelme Peluquería la experiencia parte con una
-                asesoría cercana: se evalúa el estado del cabello, el objetivo
-                del look y la mantención ideal para que el resultado siga
-                luciendo bien después de salir del salón.
-              </p>
-              <aside className="review-cta" aria-labelledby="review-cta-title">
-                <div className="review-cta-header">
-                  <span className="google-mark" aria-hidden="true">G</span>
-                  <span>Tu opinión importa</span>
-                </div>
-
-                <div className="review-cta-rating" aria-label="5 de 5 estrellas en Google">
-                  <strong>5.0</strong>
-                  <div>
-                    <span className="review-stars" aria-hidden="true">★★★★★</span>
-                    <p>Calificación en Google</p>
-                  </div>
-                </div>
-
-                <div className="review-cta-copy">
-                  <h3 id="review-cta-title">¿Te gustó tu visita?</h3>
-                  <p>
-                    Comparte tu experiencia y ayuda a otras personas a elegir
-                    su próximo cambio con confianza.
-                  </p>
-                </div>
-
-                <a
-                  className="review-cta-button"
-                  href={googleReviewUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => trackSiteEvent('review_click', { section: 'salon' })}
-                >
-                  <span>Dejar mi reseña en Google</span>
-                  <ArrowUpRight aria-hidden="true" size={19} strokeWidth={1.8} />
-                </a>
-                <small>Toma menos de un minuto</small>
-              </aside>
-            </div>
-            <div className="intro-media" aria-label="Fotos del salón">
-              <img src={salonFacade} alt="Entrada del salón Susana Riquelme" />
-              <img src={salonReception} alt="Recepción del salón" />
+            <div className="hero-trust" aria-label="Razones para elegir el salón">
+              <span>Diagnóstico personalizado</span>
+              <span>Productos profesionales</span>
+              <span>Concepción</span>
             </div>
           </div>
         </section>
@@ -1246,53 +1377,6 @@ function Landing() {
               )}
             </div>
           ))}
-        </section>
-
-        <section className="team-section" id="equipo">
-          <div className="section-heading team-heading">
-            <div>
-              <p className="section-kicker">Nuestro Equipo</p>
-              <h2>Profesionales que cuidan tu cabello desde la confianza.</h2>
-            </div>
-            <p>
-              Creemos que la belleza comienza con la confianza. Por eso, cada
-              profesional de nuestro salón trabaja de manera personalizada,
-              respetando la esencia, el estilo y las necesidades de cada clienta.
-            </p>
-          </div>
-
-          <div className="team-grid">
-            {team.map((member) => (
-              <article
-                className="team-card"
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedTeamMember(member)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    setSelectedTeamMember(member)
-                  }
-                }}
-                key={member.name}
-              >
-                <div className="team-portrait">
-                  <img
-                    src={member.image}
-                    alt={`Retrato de ${member.name}`}
-                    loading="lazy"
-                  />
-                </div>
-                <div className="team-card-body">
-                  <div>
-                    <p>{member.role}</p>
-                    <h3>{member.name}</h3>
-                  </div>
-                  <span className="team-profile-button">Ver perfil</span>
-                </div>
-              </article>
-            ))}
-          </div>
         </section>
 
         <section className="services-section" id="servicios">
@@ -1388,6 +1472,53 @@ function Landing() {
                 ),
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="team-section" id="equipo">
+          <div className="section-heading team-heading">
+            <div>
+              <p className="section-kicker">Nuestro Equipo</p>
+              <h2>Profesionales que cuidan tu cabello desde la confianza.</h2>
+            </div>
+            <p>
+              Creemos que la belleza comienza con la confianza. Por eso, cada
+              profesional de nuestro salón trabaja de manera personalizada,
+              respetando la esencia, el estilo y las necesidades de cada clienta.
+            </p>
+          </div>
+
+          <div className="team-grid">
+            {team.map((member) => (
+              <article
+                className="team-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedTeamMember(member)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setSelectedTeamMember(member)
+                  }
+                }}
+                key={member.name}
+              >
+                <div className="team-portrait">
+                  <img
+                    src={member.image}
+                    alt={`Retrato de ${member.name}`}
+                    loading="lazy"
+                  />
+                </div>
+                <div className="team-card-body">
+                  <div>
+                    <p>{member.role}</p>
+                    <h3>{member.name}</h3>
+                  </div>
+                  <span className="team-profile-button">Ver perfil</span>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
 
@@ -1592,169 +1723,57 @@ function Landing() {
           ) : null}
         </section>
 
-        <section className="gallery-section" aria-label="Galería del salón">
-          {gallery.map((image) => (
-            <img key={image.src} src={image.src} alt={image.alt} />
-          ))}
-        </section>
-
-        <section className="alliances-section" id="alianzas">
-          <div className="section-heading alliances-heading">
-            <div>
-              <p className="section-kicker">Nuestras alianzas</p>
-              <h2>Un espacio de belleza colaborativa.</h2>
-            </div>
-            <p>
-              En Susana Riquelme creemos en el trabajo colaborativo y en crear
-              espacios que potencien la belleza en todas sus formas. Por eso,
-              contamos con alianzas estratégicas con profesionales y marcas que
-              complementan nuestra experiencia en el salón.
-            </p>
-          </div>
-
-          <div className="alliances-grid">
-            {alliances.map((alliance) => (
-              <a
-                className="alliance-card"
-                href={alliance.url}
-                target="_blank"
-                rel="noreferrer"
-                key={alliance.name}
-              >
-                <div className="alliance-visual">
-                  {alliance.image ? (
-                    <img src={alliance.image} alt="" />
-                  ) : (
-                    <span>{alliance.initials}</span>
-                  )}
-                </div>
-                <div className="alliance-body">
-                  <p>{alliance.label}</p>
-                  <h3>{alliance.name}</h3>
-                  <span>{alliance.handle}</span>
-                  <p className="alliance-description">{alliance.description}</p>
-                  <ul className="alliance-highlights">
-                    {alliance.highlights.map((highlight) => (
-                      <li key={highlight}>{highlight}</li>
-                    ))}
-                  </ul>
-                  <strong>Visitar Instagram <span aria-hidden="true">↗</span></strong>
-                </div>
-              </a>
-            ))}
-          </div>
-
-          <div className="alliances-note">
-            <p>
-              Más que un salón, somos un espacio donde diferentes profesionales
-              se unen para ofrecer una experiencia integral a cada clienta.
-            </p>
-          </div>
-        </section>
-
-        <section className="social-section" id="redes">
-          <div className="section-heading compact">
-            <p className="section-kicker">Redes sociales</p>
-            <h2>Conecta con el salón y revisa trabajos recientes.</h2>
-          </div>
-
-          <div className="social-frames">
-            {socialFrames.map((social) => (
-              <article className="social-frame-card" key={social.name}>
-                <div>
-                  <h3>{social.name}</h3>
-                  <a href={social.url} target="_blank">
-                    Abrir perfil
-                  </a>
-                </div>
-                <iframe
-                  title={`${social.name} Susana Riquelme`}
-                  src={social.iframe}
-                  loading="lazy"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {newsItems.length ? (
-          <section className="news-section" id="novedades">
-            <div className="news-heading">
-              <div>
-                <p className="section-kicker">Novedades</p>
-                <h2>Noticias y momentos del salón.</h2>
-              </div>
+        <section className="intro-section" id="salon">
+          <div className="section-kicker">El salón</div>
+          <div className="intro-grid">
+            <div className="intro-copy">
+              <h2>Un espacio creado para cuidar tu cabello con criterio.</h2>
               <p>
-                Anuncios, actividades y novedades publicadas por el equipo de
-                Susana Riquelme.
+                En Susana Riquelme Peluquería la experiencia parte con una
+                asesoría cercana: se evalúa el estado del cabello, el objetivo
+                del look y la mantención ideal para que el resultado siga
+                luciendo bien después de salir del salón.
               </p>
             </div>
 
-            <div className="news-grid">
-              {newsItems.map((item, index) => (
-                <article className={`news-card ${index === 0 ? 'is-featured' : ''}`} key={item.id || `${item.title}-${index}`}>
-                  <div className="news-image">
-                    <ContentImage source={item.image} alt="" />
-                    <span>{item.category}</span>
-                  </div>
-                  <div className="news-body">
-                    <time dateTime={item.date}>{formatNewsDate(item.date)}</time>
-                    <h3>{item.title}</h3>
-                    <p>{item.description}</p>
-                    {item.link ? (
-                      <a
-                        className="news-link"
-                        href={item.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={() =>
-                          trackSiteEvent('news_open', {
-                            itemId: item.id || item.title,
-                            itemName: item.title,
-                          })
-                        }
-                      >
-                        Ver más <span aria-hidden="true">↗</span>
-                      </a>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
+            <div className="intro-showcase">
+              <SalonGallery />
             </div>
-          </section>
-        ) : null}
 
-        <section className="location-section" id="ubicacion">
-          <div className="location-copy">
-            <img className="location-logo" src={srLogoBlack} alt="" />
-            <p className="section-kicker">Ubicacion</p>
-            <h2>Caupolicán 246, departamento 101, Concepción.</h2>
-            <p>
-              Agenda tu visita, consulta disponibilidad de productos o pide una
-              recomendacion profesional antes de comprar.
-            </p>
-            <div className="location-actions">
-              <button
-                className="button primary-button"
-                type="button"
-                onClick={() => openBooking()}
-              >
-                Reservar por WhatsApp
-              </button>
-              <a className="button ghost-button light" href={instagramUrl} target="_blank">
-                Ver Instagram
-              </a>
-            </div>
-          </div>
+            <aside className="review-cta" aria-labelledby="review-cta-title">
+                <div className="review-cta-header">
+                  <span className="google-mark" aria-hidden="true">G</span>
+                  <span>Tu opinión importa</span>
+                </div>
 
-          <div className="map-frame">
-            <iframe
-              title="Mapa de Susana Riquelme Peluquería"
-              src={mapSrc}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+                <div className="review-cta-rating" aria-label="5 de 5 estrellas en Google">
+                  <strong>5.0</strong>
+                  <div>
+                    <span className="review-stars" aria-hidden="true">★★★★★</span>
+                    <p>Calificación en Google</p>
+                  </div>
+                </div>
+
+                <div className="review-cta-copy">
+                  <h3 id="review-cta-title">¿Te gustó tu visita?</h3>
+                  <p>
+                    Comparte tu experiencia y ayuda a otras personas a elegir
+                    su próximo cambio con confianza.
+                  </p>
+                </div>
+
+                <a
+                  className="review-cta-button"
+                  href={googleReviewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => trackSiteEvent('review_click', { section: 'salon' })}
+                >
+                  <span>Dejar mi reseña en Google</span>
+                  <ArrowUpRight aria-hidden="true" size={19} strokeWidth={1.8} />
+                </a>
+                <small>Toma menos de un minuto</small>
+            </aside>
           </div>
         </section>
 
@@ -1837,6 +1856,166 @@ function Landing() {
             </div>
           </div>
         </section>
+        <section className="alliances-section" id="alianzas">
+          <div className="section-heading alliances-heading">
+            <div>
+              <p className="section-kicker">Nuestras alianzas</p>
+              <h2>Un espacio de belleza colaborativa.</h2>
+            </div>
+            <p>
+              En Susana Riquelme creemos en el trabajo colaborativo y en crear
+              espacios que potencien la belleza en todas sus formas. Por eso,
+              contamos con alianzas estratégicas con profesionales y marcas que
+              complementan nuestra experiencia en el salón.
+            </p>
+          </div>
+
+          <div className="alliances-grid">
+            {alliances.map((alliance) => (
+              <a
+                className="alliance-card"
+                href={alliance.url}
+                target="_blank"
+                rel="noreferrer"
+                key={alliance.name}
+              >
+                <div className="alliance-visual">
+                  {alliance.image ? (
+                    <img src={alliance.image} alt="" />
+                  ) : (
+                    <span>{alliance.initials}</span>
+                  )}
+                </div>
+                <div className="alliance-body">
+                  <p>{alliance.label}</p>
+                  <h3>{alliance.name}</h3>
+                  <span>{alliance.handle}</span>
+                  <p className="alliance-description">{alliance.description}</p>
+                  <ul className="alliance-highlights">
+                    {alliance.highlights.map((highlight) => (
+                      <li key={highlight}>{highlight}</li>
+                    ))}
+                  </ul>
+                  <strong>Visitar Instagram <span aria-hidden="true">↗</span></strong>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          <div className="alliances-note">
+            <p>
+              Más que un salón, somos un espacio donde diferentes profesionales
+              se unen para ofrecer una experiencia integral a cada clienta.
+            </p>
+          </div>
+        </section>
+
+        <section className="location-section" id="ubicacion">
+          <div className="location-copy">
+            <img className="location-logo" src={srLogoBlack} alt="" />
+            <p className="section-kicker">Ubicacion</p>
+            <h2>Caupolicán 246, departamento 101, Concepción.</h2>
+            <p>
+              Agenda tu visita, consulta disponibilidad de productos o pide una
+              recomendacion profesional antes de comprar.
+            </p>
+            <div className="location-actions">
+              <button
+                className="button primary-button"
+                type="button"
+                onClick={() => openBooking()}
+              >
+                Reservar por WhatsApp
+              </button>
+              <a className="button ghost-button light" href={instagramUrl} target="_blank">
+                Ver Instagram
+              </a>
+            </div>
+          </div>
+
+          <div className="map-frame">
+            <iframe
+              title="Mapa de Susana Riquelme Peluquería"
+              src={mapSrc}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </section>
+
+        {newsItems.length ? (
+          <section className="news-section" id="novedades">
+            <div className="news-heading">
+              <div>
+                <p className="section-kicker">Novedades</p>
+                <h2>Noticias y momentos del salón.</h2>
+              </div>
+              <p>
+                Anuncios, actividades y novedades publicadas por el equipo de
+                Susana Riquelme.
+              </p>
+            </div>
+
+            <div className="news-grid">
+              {newsItems.map((item, index) => (
+                <article className={`news-card ${index === 0 ? 'is-featured' : ''}`} key={item.id || `${item.title}-${index}`}>
+                  <div className="news-image">
+                    <ContentImage source={item.image} alt="" />
+                    <span>{item.category}</span>
+                  </div>
+                  <div className="news-body">
+                    <time dateTime={item.date}>{formatNewsDate(item.date)}</time>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    {item.link ? (
+                      <a
+                        className="news-link"
+                        href={item.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() =>
+                          trackSiteEvent('news_open', {
+                            itemId: item.id || item.title,
+                            itemName: item.title,
+                          })
+                        }
+                      >
+                        Ver más <span aria-hidden="true">↗</span>
+                      </a>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="social-section" id="redes">
+          <div className="section-heading compact">
+            <p className="section-kicker">Redes sociales</p>
+            <h2>Conecta con el salón y revisa trabajos recientes.</h2>
+          </div>
+
+          <div className="social-frames">
+            {socialFrames.map((social) => (
+              <article className="social-frame-card" key={social.name}>
+                <div>
+                  <h3>{social.name}</h3>
+                  <a href={social.url} target="_blank">
+                    Abrir perfil
+                  </a>
+                </div>
+                <iframe
+                  title={`${social.name} Susana Riquelme`}
+                  src={social.iframe}
+                  loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                />
+              </article>
+            ))}
+          </div>
+        </section>
+
       </main>
 
       <footer className="site-footer">
@@ -3543,17 +3722,22 @@ function App() {
       </Suspense>
     )
   }
-  if (currentHash === '#terminos') return <TermsPage />
-  if (currentHash === '#devoluciones') return <RefundPolicyPage />
-  if (currentHash === '#privacidad') return <PrivacyPolicyPage />
-  if (currentPath === '/servicios/alisado') return <SmoothingRoutePage />
-  if (currentPath === '/servicios') return <ServicesRoutePage />
-  if (currentPath === '/productos' || currentHash === '#tienda') {
-    return <ProductsStorePage />
-  }
-  if (currentPath === '/ubicacion') return <LocationRoutePage />
+  let publicPage: ReactNode = <Landing />
+  if (currentHash === '#terminos') publicPage = <TermsPage />
+  else if (currentHash === '#devoluciones') publicPage = <RefundPolicyPage />
+  else if (currentHash === '#privacidad') publicPage = <PrivacyPolicyPage />
+  else if (currentPath === '/servicios/alisado') publicPage = <SmoothingRoutePage />
+  else if (currentPath === '/servicios') publicPage = <ServicesRoutePage />
+  else if (currentPath === '/productos' || currentHash === '#tienda') {
+    publicPage = <ProductsStorePage />
+  } else if (currentPath === '/ubicacion') publicPage = <LocationRoutePage />
 
-  return <Landing />
+  return (
+    <>
+      {publicPage}
+      <WhatsAppConsultation />
+    </>
+  )
 }
 
 export default App

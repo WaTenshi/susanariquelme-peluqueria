@@ -305,6 +305,7 @@ export type SiteEventName =
   | 'section_view'
   | 'product_view'
   | 'product_whatsapp'
+  | 'whatsapp_open'
   | 'booking_open'
   | 'review_click'
   | 'news_open'

@@ -14,6 +14,8 @@
   "dependencies": {
     "@cloudinary/react": "^1.14.4",
     "@cloudinary/url-gen": "^1.22.0",
+    "@fontsource/cormorant-garamond": "^5.2.8",
+    "@fontsource/manrope": "^5.2.8",
     "driver.js": "^1.8.0",
     "firebase": "^12.14.0",
     "lucide-react": "^1.23.0",

@@ -1145,6 +1145,7 @@ function AnalyticsView({ events }: { events: SiteEvent[] }) {
     section_view: 'Sección visitada',
     product_view: 'Producto abierto',
     product_whatsapp: 'Consulta de producto',
+    whatsapp_open: 'Consulta por WhatsApp',
     booking_open: 'Reserva iniciada',
     review_click: 'Reseña iniciada',
     news_open: 'Novedad abierta',
