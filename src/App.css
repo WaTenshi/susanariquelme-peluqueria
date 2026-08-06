@@ -6395,6 +6395,9 @@
   flex-direction: column;
   gap: 0.75rem;
   font-family: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  /* El panel oculto sigue ocupando espacio dentro del contenedor. Evitamos que
+     esa caja transparente bloquee enlaces y botones situados detrás. */
+  pointer-events: none;
 }
 
 .whatsapp-trigger {
@@ -6413,6 +6416,7 @@
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
+  pointer-events: auto;
   transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
