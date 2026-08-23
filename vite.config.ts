@@ -26,6 +26,8 @@ export default defineConfig(({ mode }) => {
   return {
     base: '/',
     build: {
+      target: 'es2018',
+      cssTarget: 'safari13',
       sourcemap: false,
     },
     plugins: [

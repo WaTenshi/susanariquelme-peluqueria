@@ -1958,11 +1958,19 @@ export const observeAdmin = (callback: (user: User | null) => void) =>
 
 const getSessionId = () => {
   const storageKey = 'sr-analytics-session'
-  const current = sessionStorage.getItem(storageKey)
-  if (current) return current
-  const next = crypto.randomUUID()
-  sessionStorage.setItem(storageKey, next)
-  return next
+  try {
+    const current = sessionStorage.getItem(storageKey)
+    if (current) return current
+
+    const next =
+      typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    sessionStorage.setItem(storageKey, next)
+    return next
+  } catch {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  }
 }
 
 export const trackSiteEvent = (
@@ -1975,13 +1983,17 @@ export const trackSiteEvent = (
 ) => {
   if (typeof window === 'undefined' || window.location.hash === '#admin') return
 
-  void addDoc(collection(db, 'analyticsEvents'), {
-    name,
-    sessionId: getSessionId(),
-    path: window.location.pathname,
-    ...details,
-    createdAt: serverTimestamp(),
-  }).catch(() => {
-    // La navegación nunca debe interrumpirse si el resumen estadístico no está disponible.
-  })
+  try {
+    void addDoc(collection(db, 'analyticsEvents'), {
+      name,
+      sessionId: getSessionId(),
+      path: window.location.pathname,
+      ...details,
+      createdAt: serverTimestamp(),
+    }).catch(() => {
+      // La navegación nunca debe interrumpirse si el resumen estadístico no está disponible.
+    })
+  } catch {
+    // La navegación tampoco debe interrumpirse en navegadores sin las APIs opcionales.
+  }
 }

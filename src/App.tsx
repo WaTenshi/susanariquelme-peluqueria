@@ -31,7 +31,7 @@ import {
   subscribeToServiceCategories,
   subscribeToServiceItems,
   trackSiteEvent,
-} from './firebase'
+} from './public-data'
 import type { NewsItem, Product, ServiceCategory, ServiceItem } from './types'
 import ContentImage from './ContentImage'
 import { initialServiceCategories } from './servicesContent'
@@ -4077,6 +4077,11 @@ function App() {
   const [currentHash, setCurrentHash] = useState(() => window.location.hash)
   const currentPath = window.location.pathname.replace(/\/+$/, '') || '/'
   const productQueryLocator = new URLSearchParams(window.location.search).get('producto')
+
+  useEffect(() => {
+    document.documentElement.classList.add('app-mounted')
+    window.dispatchEvent(new Event('sr-app-mounted'))
+  }, [])
 
   useEffect(() => {
     const handleHashChange = () => setCurrentHash(window.location.hash)

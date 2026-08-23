@@ -193,9 +193,13 @@ const renderRoute = (route) => {
       `    <script type="application/ld+json">${JSON.stringify(route.schema)}</script>\n  </head>`,
     )
     .replace(
-      '<div id="root"></div>',
-      `<div id="root"><div class="seo-prerender-shell">${route.content}</div></div>`,
+      '<!--seo-prerender-content-->',
+      `<div class="seo-prerender-shell">${route.content}</div>`,
     )
+
+  if (!html.includes('seo-prerender-shell')) {
+    throw new Error(`No se pudo insertar el contenido estático para ${route.path}`)
+  }
 
   if (!html.includes(socialImage)) {
     throw new Error(`La imagen social no está configurada para ${route.path}`)
