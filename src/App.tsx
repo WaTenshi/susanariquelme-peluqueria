@@ -43,10 +43,6 @@ import {
   relatedProductsFor,
 } from './catalog-utils'
 
-import brazilianLogo from './assets/eef019e6-2c79-4ceb-ae07-f48716d5bb3f.png'
-import glattenLogo from './assets/glatten-professional-logo.png'
-import inebryaLogo from './assets/inebrya_white.svg'
-import lorealLogo from './assets/images.png'
 import salonHero from './assets/web-IMG_6610.jpg'
 import salonFacade from './assets/web-IMG_6619.jpg'
 import salonReception from './assets/web-IMG_6608.jpg'
@@ -56,10 +52,6 @@ import salonStations from './assets/web-IMG_6614.jpg'
 import salonLogoDetail from './assets/web-IMG_6615.jpg'
 import srLogoBlack from './assets/SRLOGOSINFONDO.png'
 import srLogoWhite from './assets/SR BLANCA SINFONDO.png'
-import trussLogo from './assets/TRUSS-Professional-Branco-opt.webp'
-import mariaJosePhoto from './assets/MARIAJOSE.jpeg'
-import moiraPhoto from './assets/MOIRA.jpeg'
-import claudiaPhoto from './assets/CLAUDIA.jpeg'
 import hairModelShort from './assets/hair-model-short-transparent.webp'
 import hairModelMedium from './assets/hair-model-medium-transparent.webp'
 import hairModelLong from './assets/hair-model-long-transparent.webp'
@@ -416,14 +408,6 @@ function ProductQuickView({
   )
 }
 
-const brandLogos = [
-  { name: 'TRUSS Professional', image: trussLogo },
-  { name: 'L\'Oreal Paris', image: lorealLogo },
-  { name: 'Inebrya', image: inebryaLogo },
-  { name: 'Brasilian Hair Seduction', image: brazilianLogo },
-  { name: 'Glatten Professional', image: glattenLogo },
-]
-
 const footerSocialLinks = [
   { name: 'Instagram', url: instagramUrl, icon: 'instagram' },
   { name: 'Facebook', url: facebookUrl, icon: 'facebook' },
@@ -435,58 +419,7 @@ const footerSocialLinks = [
   },
 ]
 
-const team = [
-  {
-    name: 'María José Abarzúa',
-    role: 'Directora y Estilista Senior',
-    initials: 'MJ',
-    image: mariaJosePhoto,
-    description:
-      'María José cree que cada cabello tiene necesidades únicas. Por eso, su trabajo se basa en la asesoría personalizada, el cuidado capilar y la creación de resultados que reflejen la esencia de cada clienta en un ambiente de confianza y bienestar.',
-    specialties: [
-      'Diagnóstico capilar',
-      'Rubios personalizados',
-      'Morenas iluminadas',
-      'Reparación capilar',
-      'Experta en rizos',
-      'Asesoría de productos profesionales',
-    ],
-  },
-  {
-    name: 'Moira',
-    role: 'Colorista y Especialista en Corrección de Color',
-    initials: 'M',
-    image: moiraPhoto,
-    description:
-      'Moira se caracteriza por su responsabilidad, dedicación y atención al detalle. Disfruta especialmente los desafíos técnicos, transformando cabellos complejos en resultados armónicos y saludables. Su enfoque perfeccionista y su compromiso con cada trabajo le permiten abordar correcciones de color y rubios personalizados con precisión y confianza.',
-    specialties: [
-      'Corrección de color',
-      'Rubios personalizados',
-      'Diseño de mechas',
-      'Transformaciones capilares',
-      'Neutralización de tonos no deseados',
-      'Diagnóstico capilar',
-      'Reparación capilar',
-      'Alisados',
-    ],
-  },
-  {
-    name: 'Claudia',
-    role: 'Colorista y Estilista Integral',
-    initials: 'C',
-    image: claudiaPhoto,
-    description:
-      'Con más de 10 años de experiencia, Claudia se caracteriza por su cercanía, energía positiva y dedicación hacia cada clienta. Su objetivo es crear resultados personalizados en un ambiente de confianza, haciendo que cada visita sea una experiencia agradable y acogedora.',
-    specialties: [
-      'Tonos cobrizos',
-      'Rubios personalizados',
-      'Morena iluminada',
-      'Diseño de mechas',
-      'Visos',
-      'Coloración personalizada',
-    ],
-  },
-]
+const stylistNames = ['María José Abarzúa', 'Moira', 'Claudia']
 
 const undecidedSpecialistOption = 'No sé con cual estilista atenderme'
 
@@ -1109,7 +1042,6 @@ function SiteHeader({
       </button>
 
       <nav className="site-nav" aria-label="Navegación principal">
-        <a href="/#equipo" onClick={onMenuClose}>Nuestro Equipo</a>
         <a href="/servicios/" onClick={onMenuClose}>Servicios</a>
         <a href="/productos/" onClick={onMenuClose}>Productos</a>
         <a href="/#alianzas" onClick={onMenuClose}>Alianzas</a>
@@ -1252,7 +1184,7 @@ function RouteBookingModal({ onClose }: { onClose: () => void }) {
             Especialista
             <select value={specialist} onChange={(event) => setSpecialist(event.target.value)}>
               <option value="">Aún no lo decido</option>
-              {team.map((member) => <option value={member.name} key={member.name}>{member.name}</option>)}
+              {stylistNames.map((name) => <option value={name} key={name}>{name}</option>)}
             </select>
           </label>
           <label>
@@ -1337,9 +1269,6 @@ function Landing() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [selectedTeamMember, setSelectedTeamMember] = useState<
-    (typeof team)[number] | null
-  >(null)
   const [managedProducts, setManagedProducts] = useState<Product[]>([])
   const [managedNews, setManagedNews] = useState<NewsItem[]>([])
   const [managedServiceCategories, setManagedServiceCategories] = useState<
@@ -1546,8 +1475,7 @@ function Landing() {
   }
 
   useEffect(() => {
-    const isModalOpen =
-      isBookingOpen || selectedProduct !== null || selectedTeamMember !== null
+    const isModalOpen = isBookingOpen || selectedProduct !== null
     document.body.style.overflow = isModalOpen ? 'hidden' : ''
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -1555,7 +1483,6 @@ function Landing() {
         setIsMenuOpen(false)
         setIsBookingOpen(false)
         setSelectedProduct(null)
-        setSelectedTeamMember(null)
       }
     }
 
@@ -1564,7 +1491,7 @@ function Landing() {
       document.body.style.overflow = ''
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [isBookingOpen, selectedProduct, selectedTeamMember])
+  }, [isBookingOpen, selectedProduct])
 
   useEffect(() => {
     if (!isBookingOpen) return
@@ -1627,19 +1554,20 @@ function Landing() {
           </div>
         </section>
 
-        <section className="brands-band" aria-label="Marcas profesionales">
-          {brandLogos.map((brand) => (
-            <div
-              className={`brand-pill${brand.name.includes('Brasilian') ? ' is-brasilian' : ''}`}
-              key={brand.name}
-            >
-              {brand.image ? (
-                <img src={brand.image} alt={brand.name} />
-              ) : (
-                <span>{brand.name}</span>
-              )}
-            </div>
-          ))}
+        <section className="kerastase-section" id="kerastase" aria-labelledby="kerastase-title">
+          <div className="kerastase-wordmark" aria-label="Kérastase Paris">
+            <span>KÉRASTASE</span>
+            <small>PARIS</small>
+          </div>
+          <div className="kerastase-copy">
+            <p className="section-kicker">Cuidado profesional</p>
+            <h2 id="kerastase-title">Trabajamos con la reconocida marca Kérastase.</h2>
+            <p>
+              Incorporamos sus productos y tratamientos profesionales para complementar
+              cada servicio con un cuidado capilar de alto nivel, elegido según las
+              necesidades de tu cabello.
+            </p>
+          </div>
         </section>
 
         <section className="services-section" id="servicios">
@@ -1738,53 +1666,6 @@ function Landing() {
                 ),
               )}
             </div>
-          </div>
-        </section>
-
-        <section className="team-section" id="equipo">
-          <div className="section-heading team-heading">
-            <div>
-              <p className="section-kicker">Nuestro Equipo</p>
-              <h2>Profesionales que cuidan tu cabello desde la confianza.</h2>
-            </div>
-            <p>
-              Creemos que la belleza comienza con la confianza. Por eso, cada
-              profesional de nuestro salón trabaja de manera personalizada,
-              respetando la esencia, el estilo y las necesidades de cada clienta.
-            </p>
-          </div>
-
-          <div className="team-grid">
-            {team.map((member) => (
-              <article
-                className="team-card"
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedTeamMember(member)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    setSelectedTeamMember(member)
-                  }
-                }}
-                key={member.name}
-              >
-                <div className="team-portrait">
-                  <img
-                    src={member.image}
-                    alt={`Retrato de ${member.name}`}
-                    loading="lazy"
-                  />
-                </div>
-                <div className="team-card-body">
-                  <div>
-                    <p>{member.role}</p>
-                    <h3>{member.name}</h3>
-                  </div>
-                  <span className="team-profile-button">Ver perfil</span>
-                </div>
-              </article>
-            ))}
           </div>
         </section>
 
@@ -2334,9 +2215,9 @@ function Landing() {
                   onChange={(event) => setSelectedSpecialist(event.target.value)}
                 >
                   <option value="">{undecidedSpecialistOption}</option>
-                  {team.map((member) => (
-                    <option value={member.name} key={member.name}>
-                      {member.name}
+                  {stylistNames.map((name) => (
+                    <option value={name} key={name}>
+                      {name}
                     </option>
                   ))}
                 </select>
@@ -2372,55 +2253,6 @@ function Landing() {
             >
               Cotizar por WhatsApp
             </a>
-          </section>
-        </div>
-      ) : null}
-
-      {selectedTeamMember ? (
-        <div
-          className="modal-backdrop team-modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSelectedTeamMember(null)
-          }}
-        >
-          <section
-            className="team-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="team-modal-title"
-          >
-            <button
-              className="modal-close team-modal-close"
-              type="button"
-              onClick={() => setSelectedTeamMember(null)}
-              aria-label="Cerrar perfil de estilista"
-            >
-              ×
-            </button>
-
-            <div className="team-modal-photo">
-              <img
-                src={selectedTeamMember.image}
-                alt={`Retrato de ${selectedTeamMember.name}`}
-              />
-            </div>
-
-            <div className="team-modal-info">
-              <p>{selectedTeamMember.role}</p>
-              <h2 id="team-modal-title">{selectedTeamMember.name}</h2>
-              <p className="team-modal-description">
-                {selectedTeamMember.description}
-              </p>
-              <div className="team-modal-specialties">
-                <span>Especialidades</span>
-                <ul>
-                  {selectedTeamMember.specialties.map((specialty) => (
-                    <li key={specialty}>{specialty}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
           </section>
         </div>
       ) : null}
